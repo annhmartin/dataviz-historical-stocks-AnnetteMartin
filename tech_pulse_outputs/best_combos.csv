@@ -1,0 +1,6 @@
+ticker,signal,hold_days,sent_thresh,min_stories,win_rate,avg_return,n_signals
+PLTR,sent_momentum,21,0.6,1,1.0,20.565808230835792,4
+CRWD,norm_sentiment,21,0.2,1,0.7647058823529411,10.426112135941006,17
+PM,norm_sentiment,21,0.6,1,0.5,9.07818273403832,4
+PANW,sent_momentum,21,0.2,1,0.75,7.397496373828441,12
+NVO,sent_momentum,21,0.4,1,0.6,5.537717903124735,5
