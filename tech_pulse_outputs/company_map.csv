@@ -1,0 +1,30 @@
+ticker,names,keywords
+AAPL,apple,iphone|ipad|macos|ios|app store|macbook|airpods|apple watch|swift|xcode|siri
+MSFT,microsoft,windows|azure|office 365|teams|copilot|github|xbox|bing|activision|openai|powershell|visual studio|typescript
+GOOGL,google|alphabet|deepmind,android|chrome|youtube|gmail|google cloud|gemini|bard|waymo|pixel|search engine|tpu
+META,meta|facebook|instagram|whatsapp|oculus,metaverse|llama|reels|threads|react native|pytorch|vr headset|quest
+AMZN,amazon|aws,prime|ec2|s3|lambda|alexa|kindle|cloud computing|ecommerce|fulfillment|twitch
+NVDA,nvidia,gpu|cuda|geforce|ai chip|h100|a100|graphics card|deep learning hardware|tensorrt|data center gpu|blackwell
+TSM,tsmc|taiwan semiconductor,chip fabrication|semiconductor foundry|3nm|5nm|2nm|advanced packaging|chipmaker
+INTC,intel,x86|core processor|xeon|optane|arc gpu|intel foundry|gaudi
+AMD,amd|advanced micro devices,ryzen|epyc|radeon|instinct mi|zen architecture
+QCOM,qualcomm,snapdragon|5g modem|arm chip|mobile processor
+CRM,salesforce,crm software|sales cloud|einstein ai|slack|tableau
+NOW,servicenow,itsm|it service management|workflow automation
+SNOW,snowflake,data warehouse|data cloud|snowpark
+DDOG,datadog,observability|apm|log management|monitoring platform
+MDB,mongodb,nosql|document database|atlas database
+PLTR,palantir,gotham|foundry platform|aip platform|defense ai|government analytics
+CRWD,crowdstrike,endpoint security|falcon platform|xdr security|threat intelligence
+PANW,palo alto networks,firewall|sase|zero trust network|prisma cloud
+OKTA,okta,identity management|sso|single sign-on|iam platform
+PYPL,paypal|venmo,digital wallet|online payment|buy now pay later
+COIN,coinbase,crypto exchange|cryptocurrency trading|defi|bitcoin|ethereum|blockchain
+TSLA,tesla,electric vehicle|autopilot|full self driving|supercharger|gigafactory|powerwall|elon musk
+NFLX,netflix,streaming service|content moderation|ad-supported tier
+SPOT,spotify,music streaming|podcast platform|audio streaming
+INCY,incyte,jak inhibitor|ruxolitinib|oncology drug|hematology|jakafi
+KGC,kinross gold,gold mining|gold producer|precious metals mining
+NVO,novo nordisk,ozempic|wegovy|glp-1|semaglutide|diabetes drug|obesity drug
+PM,philip morris,iqos|heated tobacco|zyn|nicotine pouch
+WPM,wheaton precious metals,silver streaming|gold streaming|precious metals royalty
