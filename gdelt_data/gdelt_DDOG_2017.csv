@@ -1,0 +1,20 @@
+ticker,date,title,url,domain,language,tone,source
+DDOG,2017-02-01,"British Gas , HMRC , Thomas Cook and BMJ finalists in DevOps Excellence Awards 2017",http://www.v3.co.uk/v3-uk/news/3003818/british-gas-hmrc-thomas-cook-and-bmj-finalists-in-devops-excellence-awards-2017,v3.co.uk,English,0.0,gdelt_gkg
+DDOG,2017-02-01,DevOps Excellence Awards 2017 : Finalists announced,http://www.computing.co.uk/ctg/news/3003816/devops-excellence-awards-2017-finalists-announced,computing.co.uk,English,0.0,gdelt_gkg
+DDOG,2017-02-04,Locking down containers,https://gcn.com/articles/2017/02/03/container-security.aspx,gcn.com,English,0.0,gdelt_gkg
+DDOG,2017-02-08,2017 4th Annual BostInno Tech Madness 150 Finalist Reveal,http://bostinno.streetwise.co/all-series/announcing-our-150-tech-madness-2017-finalists/,bostinno.streetwise.co,English,0.0,gdelt_gkg
+DDOG,2017-02-09,Global IT Infrastructure Monitoring Market on Track to US$ 34 . 1 Billion by 2024,http://www.openpr.com/news/432721/Global-IT-Infrastructure-Monitoring-Market-on-Track-to-US-34-1-Billion-by-2024.html,openpr.com,English,0.0,gdelt_gkg
+DDOG,2017-02-14,Is PostgreSQL good enough ? ,http://renesd.blogspot.com/2017/02/is-postgresql-good-enough.html,renesd.blogspot.com,English,0.0,gdelt_gkg
+DDOG,2017-02-15,Datadog Announces General Availability of Application Performance Monitoring,http://www.businesswire.com/news/home/20170215005234/en/Datadog-Announces-General-Availability-Application-Performance-Monitoring,businesswire.com,English,0.0,gdelt_gkg
+DDOG,2017-02-15,Datadog announces new APM solution,http://sdtimes.com/datadog-announces-new-apm-solution/,sdtimes.com,English,0.0,gdelt_gkg
+DDOG,2017-02-15,Datadog Announces General Availability of Application Performance Monitoring,http://www.cantechletter.com/newswire/datadog-announces-general-availability-of-application-performance-monitoring/,cantechletter.com,English,0.0,gdelt_gkg
+DDOG,2017-02-16,"A guide to Kubernetes , Mesosphere , and Docker Swarm",https://insights.hpe.com/content/hpe-nxt/en/articles/2017/02/the-basics-explaining-kubernetes-mesosphere-and-docker-swarm.html,insights.hpe.com,English,0.0,gdelt_gkg
+DDOG,2017-02-16,Kafka Summit New York Keynotes and Agenda Revealed,http://www.businesswire.com/news/home/20170216005411/en/Kafka-Summit-York-Keynotes-Agenda-Revealed,businesswire.com,English,0.0,gdelt_gkg
+DDOG,2017-02-16,Kafka Summit New York Keynotes and Agenda Revealed,https://www.benzinga.com/pressreleases/17/02/b9060222/kafka-summit-new-york-keynotes-and-agenda-revealed,benzinga.com,English,0.0,gdelt_gkg
+DDOG,2017-02-16,Kafka Summit New York Keynotes and Agenda Revealed,http://www.marketwatch.com/story/kafka-summit-new-york-keynotes-and-agenda-revealed-2017-02-16,marketwatch.com,English,0.0,gdelt_gkg
+DDOG,2017-02-20,Running Costs,https://cushionapp.com/running-costs/,cushionapp.com,English,0.0,gdelt_gkg
+DDOG,2017-02-23,Datadog Completes SOC 2 Report,http://www.marketwatch.com/story/datadog-completes-soc-2-report-2017-02-23,marketwatch.com,English,0.0,gdelt_gkg
+DDOG,2017-02-23,Datadog Completes SOC 2 Report,http://www.businesswire.com/news/home/20170223005102/en/Datadog-Completes-SOC-2-Report,businesswire.com,English,0.0,gdelt_gkg
+DDOG,2017-02-24,10 Cloud,http://www.forbes.com/sites/forbestechcouncil/2017/02/24/10-cloud-based-services-every-tech-department-should-be-using/,forbes.com,English,0.0,gdelt_gkg
+DDOG,2017-02-24,10 Cloud,https://www.forbes.com/sites/forbestechcouncil/2017/02/24/10-cloud-based-services-every-tech-department-should-be-using/,forbes.com,English,0.0,gdelt_gkg
+DDOG,2017-02-28,Global IT Infrastructure Monitoring Market Worth US$ 34 . 1 Bn by 2024 – MilTech,http://www.military-technologies.net/2017/02/28/global-it-infrastructure-monitoring-market-worth-us-34-1-bn-by-2024/,military-technologies.net,English,0.0,gdelt_gkg
