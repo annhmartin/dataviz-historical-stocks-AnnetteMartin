@@ -1,4 +1,7 @@
 ticker,date,title,url,domain,language,tone,source
+SNOW,2018-07-12,Snowflake Computing cloud data warehouse lands on Microsoft Azure,https://siliconangle.com/blog/2018/07/12/snowflake-computings-cloud-data-warehouse-lands-microsoft-azure/,siliconangle.com,English,0.0,gdelt_gkg
+SNOW,2018-07-13,Snowflake Brings Its Data Warehouse To Microsoft Azure,https://www.forbes.com/sites/janakirammsv/2018/07/12/snowflake-brings-its-data-warehouse-to-microsoft-azure/,forbes.com,English,0.0,gdelt_gkg
+SNOW,2018-07-25,Amazon backlash : How Microsoft is profiting from retailers who dont want to work with AWS . ,https://slate.com/technology/2018/07/amazon-backlash-how-microsoft-is-profiting-from-retailers-who-dont-want-to-work-with-aws.html,slate.com,English,0.0,gdelt_gkg
 SNOW,2018-11-10,Cloud Data Warehousing for Dummies,http://gisuser.com/2018/11/cloud-data-warehousing-for-dummies/,gisuser.com,English,0.0,gdelt_gkg
 SNOW,2018-11-29,Harvard Business Review Analytic Services Study Reveals That Organizations Are Not Prepared for a Data - Driven Future,https://www.finanznachrichten.de/nachrichten-2018-11/45400614-harvard-business-review-analytic-services-study-reveals-that-organizations-are-not-prepared-for-a-data-driven-future-004.htm,finanznachrichten.de,English,0.0,gdelt_gkg
 SNOW,2018-12-01,Microsoft : How Microsoft Quietly Became the World Most Valuable Company,https://www.marketscreener.com/MICROSOFT-CORPORATION-4835/news/Microsoft-How-Microsoft-Quietly-Became-the-World-s-Most-Valuable-Company-27692579/,marketscreener.com,English,0.0,gdelt_gkg
