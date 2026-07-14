@@ -1,0 +1,10 @@
+ticker,entry_date,exit_date,entry_price,exit_price,return_pct,trade_cost,portfolio_val,strategy,trigger_source,trigger_sentiment
+SOWG,2026-01-02,2026-02-03,5.1,8.7,70.59,16.75,28553.27,Position Trader,reddit_technology,1.1896
+POET,2026-02-03,2026-03-05,6.04,6.64,9.93,12.8,14057.38,Position Trader,reddit_wallstreetbets,1.28685
+NRC,2026-03-05,2026-04-06,13.8,17.2,24.57,11.53,14357.09,Position Trader,reddit_investing,0.98355
+DLTR,2026-04-06,2026-05-05,111.09,93.69,-15.66,8.42,7090.42,Position Trader,reddit_investing,1.14135
+EVER,2026-05-05,2026-06-04,23.82,19.22,-19.31,8.99,7245.46,Position Trader,reddit_wallstreetbets,0.95535
+LOVE,2026-01-15,2026-02-17,,,-15.82,,8397.76,Opt Stop Global,reddit_stocks,1.41615
+PYPL,2026-03-13,2026-04-14,,,6.84,,10663.74,Opt Stop Sector,reddit_investing,0.4772999999999999
+AMZN,2026-04-15,2026-05-14,,,7.53,,11445.74,Opt Stop Sector,edgar_8k|hn,0.2950285714285713
+PLTR,2026-05-14,2026-06-15,,,0.73,,11506.72,Opt Stop Sector,hn,1.00575
