@@ -11,7 +11,7 @@ GITHUB_REPO   = "annhmartin/dataviz-historical-stocks-AnnetteMartin"
 
 # Data folder paths — relative to repo root
 # Based on current structure: all data is inside "stock tracking/" folder
-FOLDER        = "stock_tracking"   # parent folder in repo
+FOLDER        = "stock tracking"   # parent folder in repo
 OUTPUT_PREFIX = f"{FOLDER}/sentiment_outputs"
 CORR_PREFIX   = f"{FOLDER}/correlation_outputs"
 STRAT_PREFIX  = f"{FOLDER}/strategy_outputs"
