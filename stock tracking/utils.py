@@ -6,11 +6,17 @@ import io
 import streamlit as st
 from datetime import datetime
 
+# ── GitHub repo config ────────────────────────────────────────────────────────
 GITHUB_REPO   = "annhmartin/dataviz-historical-stocks-AnnetteMartin"
-OUTPUT_PREFIX = "sentiment_outputs"
-CORR_PREFIX   = "correlation_outputs"
-STRAT_PREFIX  = "strategy_outputs"
-STOCKS_PREFIX = "stocks"
+
+# Data folder paths — relative to repo root
+# Based on current structure: all data is inside "stock tracking/" folder
+FOLDER        = "stock tracking"   # parent folder in repo
+OUTPUT_PREFIX = f"{FOLDER}/sentiment_outputs"
+CORR_PREFIX   = f"{FOLDER}/correlation_outputs"
+STRAT_PREFIX  = f"{FOLDER}/strategy_outputs"
+STOCKS_PREFIX = f"{FOLDER}/stocks"
+
 SENTIMENT_THRESHOLD = 0.05
 
 SECTOR_MAP = {
@@ -51,6 +57,7 @@ STRAT_LABELS = {
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_csv(path, token=None):
+    """Load a CSV file from GitHub raw URL."""
     url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
     hdrs = {"Authorization": f"Bearer {token}"} if token else {}
     try:
@@ -62,15 +69,18 @@ def load_csv(path, token=None):
         if not content:
             return pd.DataFrame()
         return pd.read_csv(io.StringIO(content), low_memory=False)
-    except Exception:
+    except Exception as e:
+        st.warning(f"Could not load {path}: {e}")
         return pd.DataFrame()
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_signals(token=None):
+    """Load all quarterly sentiment signal files."""
     frames = []
     for year in range(2015, datetime.now().year + 1):
         for q in [1, 2, 3, 4]:
-            df = load_csv(f"{OUTPUT_PREFIX}/daily_signals_{year}_Q{q}.csv", token)
+            path = f"{OUTPUT_PREFIX}/daily_signals_{year}_Q{q}.csv"
+            df = load_csv(path, token)
             if not df.empty:
                 frames.append(df)
     if not frames:
@@ -81,6 +91,7 @@ def load_signals(token=None):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_price(ticker, token=None):
+    """Load price data for a single ticker."""
     df = load_csv(f"{STOCKS_PREFIX}/prices_{ticker}.csv", token)
     if df.empty:
         return pd.DataFrame()
@@ -91,11 +102,21 @@ def load_price(ticker, token=None):
     return df.sort_values("Date").reset_index(drop=True)
 
 def get_sig_col(daily_signals):
+    """Return the best available sentiment column name."""
     return "adaptive_sentiment" if "adaptive_sentiment" in daily_signals.columns else "norm_sentiment"
 
+def get_token():
+    """Get GitHub token from Streamlit secrets."""
+    try:
+        return st.secrets["GITHUB_TOKEN"]
+    except Exception:
+        return None
+
 def sidebar_filters(all_tickers):
-    """Render sidebar and return (selected_tickers, start_date, end_date, token)."""
-    token = st.secrets.get("GITHUB_TOKEN", None)
+    """
+    Render sidebar controls and return (selected_tickers, start_date, end_date, token).
+    """
+    token = get_token()
 
     st.sidebar.title("📡 Tech Pulse")
     st.sidebar.markdown("---")
@@ -110,7 +131,10 @@ def sidebar_filters(all_tickers):
         default = [t for t in DEFAULT_TICKERS if t in all_tickers]
 
     selected = st.sidebar.multiselect(
-        "Select tickers", options=all_tickers, default=default
+        "Select tickers",
+        options=all_tickers,
+        default=default,
+        help="Choose companies to display across all charts"
     )
 
     date_range = st.sidebar.date_input(
