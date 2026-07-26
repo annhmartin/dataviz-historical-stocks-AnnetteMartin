@@ -6,12 +6,10 @@ import io
 import streamlit as st
 from datetime import datetime
 
-# ── GitHub repo config ────────────────────────────────────────────────────────
 GITHUB_REPO   = "annhmartin/dataviz-historical-stocks-AnnetteMartin"
 
-# Data folder paths — relative to repo root
-# Based on current structure: all data is inside "stock tracking/" folder
-FOLDER        = "stock_tracking"   # parent folder in repo
+# All data lives inside stock_tracking/ in the repo
+FOLDER        = "stock_tracking"
 OUTPUT_PREFIX = f"{FOLDER}/sentiment_outputs"
 CORR_PREFIX   = f"{FOLDER}/correlation_outputs"
 STRAT_PREFIX  = f"{FOLDER}/strategy_outputs"
@@ -57,7 +55,6 @@ STRAT_LABELS = {
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_csv(path, token=None):
-    """Load a CSV file from GitHub raw URL."""
     url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
     hdrs = {"Authorization": f"Bearer {token}"} if token else {}
     try:
@@ -69,13 +66,11 @@ def load_csv(path, token=None):
         if not content:
             return pd.DataFrame()
         return pd.read_csv(io.StringIO(content), low_memory=False)
-    except Exception as e:
-        st.warning(f"Could not load {path}: {e}")
+    except Exception:
         return pd.DataFrame()
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_signals(token=None):
-    """Load all quarterly sentiment signal files."""
     frames = []
     for year in range(2015, datetime.now().year + 1):
         for q in [1, 2, 3, 4]:
@@ -91,7 +86,6 @@ def load_signals(token=None):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_price(ticker, token=None):
-    """Load price data for a single ticker."""
     df = load_csv(f"{STOCKS_PREFIX}/prices_{ticker}.csv", token)
     if df.empty:
         return pd.DataFrame()
@@ -102,22 +96,16 @@ def load_price(ticker, token=None):
     return df.sort_values("Date").reset_index(drop=True)
 
 def get_sig_col(daily_signals):
-    """Return the best available sentiment column name."""
     return "adaptive_sentiment" if "adaptive_sentiment" in daily_signals.columns else "norm_sentiment"
 
 def get_token():
-    """Get GitHub token from Streamlit secrets."""
     try:
         return st.secrets["GITHUB_TOKEN"]
     except Exception:
         return None
 
 def sidebar_filters(all_tickers):
-    """
-    Render sidebar controls and return (selected_tickers, start_date, end_date, token).
-    """
     token = get_token()
-
     st.sidebar.title("📡 Tech Pulse")
     st.sidebar.markdown("---")
 
