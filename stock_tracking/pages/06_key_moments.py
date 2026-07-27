@@ -83,7 +83,7 @@ ax1.axvline(move["sent_date"],  color="#8e44ad", linewidth=2, linestyle="--", zo
 ax1.set_ylabel("% change from window start", fontsize=9)
 ax1.set_title(
     f"{ticker_km} — {move['move_date'].strftime('%B %Y')} | "
-    f"Move: {move['return_pct']:+.1f}% (z={move['zscore']:+.1f})"
+    f"Move: {move['return_pct']:+.1f}% (z={move['zscore']:+.1f}) | "
     f"Sentiment {move['days_before']}d before: {move['sentiment']:+.3f} | "
     f"Sources: {move.get('sources_active','unknown')}",
     fontsize=11, fontweight="bold"
