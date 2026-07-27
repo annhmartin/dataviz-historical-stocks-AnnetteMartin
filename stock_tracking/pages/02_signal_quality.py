@@ -30,10 +30,10 @@ st.markdown("""
 Each dot = one day where sentiment was above/below neutral.
 The quadrant it lands in shows whether the prediction was right.
 
-- **True Positive** (top-right 🟢): positive buzz → stock UP ✓
-- **False Positive** (bottom-right 🔴): positive buzz → stock DOWN ✗  
-- **True Negative** (bottom-left 🔵): negative buzz → stock DOWN ✓
-- **False Negative** (top-left 🟠): negative buzz → stock UP ✗
+**True Positive** (top-right 🟢): positive buzz → stock UP ✓
+**False Positive** (bottom-right 🔴): positive buzz → stock DOWN ✗  
+**True Negative** (bottom-left 🔵): negative buzz → stock DOWN ✓
+**False Negative** (top-left 🟠): negative buzz → stock UP ✗
 
 **Dot size** = stories that day. **Orange trend line** = overall direction.
 """)
