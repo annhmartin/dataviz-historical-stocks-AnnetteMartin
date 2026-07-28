@@ -15,7 +15,6 @@ STOCKS_PREFIX = FOLDER + "/stocks"
 SENTIMENT_THRESHOLD = 0.05
 
 SECTOR_MAP = {
-    "All Tickers"          : [],
     "AI Accelerators"      : ["NVDA","AMD"],
     "Semiconductor Supply" : ["TSM","INTC","QCOM"],
     "Big Tech"             : ["GOOGL","MSFT","AAPL","META"],
@@ -28,7 +27,7 @@ SECTOR_MAP = {
     "Enterprise Fintech"   : ["PYPL"],
 }
 
-DEFAULT_TICKERS = ["NVDA","AAPL","MSFT","GOOGL","META","CRWD","PANW","PLTR","NVO","PM"]
+DEFAULT_SECTOR = "Big Tech"
 
 STRAT_COLORS = {
     "SP_500_SPY_"     : "#f39c12",
@@ -115,17 +114,16 @@ def get_token():
     except Exception:
         return None
 
-def sidebar_filters(all_tickers):
+def sidebar_filters():
     token = get_token()
-    st.sidebar.title("Tech Pulse")
     st.sidebar.markdown("---")
-    sector = st.sidebar.radio("Sector", options=list(SECTOR_MAP.keys()), index=0)
-    if sector == "All Tickers":
-        selected = [t for t in DEFAULT_TICKERS if t in all_tickers]
-    else:
-        selected = [t for t in SECTOR_MAP[sector] if t in all_tickers]
-    if not selected:
-        selected = [t for t in DEFAULT_TICKERS if t in all_tickers]
+    sector = st.sidebar.radio(
+        "Sector",
+        options=list(SECTOR_MAP.keys()),
+        index=list(SECTOR_MAP.keys()).index(DEFAULT_SECTOR)
+    )
+    selected = list(SECTOR_MAP[sector])
+
     date_range = st.sidebar.date_input(
         "Date Range",
         value=[pd.Timestamp("2018-01-01").date(), pd.Timestamp.today().date()],
@@ -134,6 +132,5 @@ def sidebar_filters(all_tickers):
     )
     start = pd.Timestamp(date_range[0])
     end   = pd.Timestamp(date_range[1]) if len(date_range) > 1 else pd.Timestamp.today()
-    st.sidebar.markdown("---")
-    st.sidebar.caption("Selected: " + ", ".join(selected))
+
     return selected, start, end, token

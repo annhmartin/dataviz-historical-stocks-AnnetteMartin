@@ -20,8 +20,7 @@ if df_equity.empty:
     st.stop()
 
 df_equity["date"] = pd.to_datetime(df_equity["date"])
-
-selected, start, end, token = sidebar_filters(["NVDA"])
+selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
 st.header("What If")
@@ -42,7 +41,7 @@ COL_LABELS = {"SP_500_SPY_": "S&P 500 (SPY)", "Buy__Hold": "Buy & Hold", "Sector
 eq = df_equity[(df_equity["date"] >= wi_start_ts) & (df_equity["date"] <= wi_end_ts)].copy()
 strat_cols = [c for c in SHOW_COLS if c in eq.columns]
 
-if eq.empty:
+if eq.empty or not strat_cols:
     st.warning("No data for the selected date range.")
     st.stop()
 
@@ -54,22 +53,22 @@ for col_name in strat_cols:
     s0    = float(series.iloc[0])
     final = float(series.iloc[-1])
     scale = starting_amount / s0 if s0 > 0 else 1.0
-    scaled_series = series * scale
+    scaled = series * scale
     results[col_name] = {
-        "series"     : scaled_series,
-        "final"      : float(scaled_series.iloc[-1]),
-        "gain"       : float(scaled_series.iloc[-1]) - starting_amount,
-        "return_pct" : (final / s0 - 1) * 100 if s0 > 0 else 0,
+        "series"    : scaled,
+        "final"     : float(scaled.iloc[-1]),
+        "gain"      : float(scaled.iloc[-1]) - starting_amount,
+        "return_pct": (final / s0 - 1) * 100 if s0 > 0 else 0,
     }
 
 if not results:
-    st.warning("No strategy data available for the selected date range.")
+    st.warning("No strategy data for the selected date range.")
     st.stop()
 
 st.markdown("---")
 mcols = st.columns(len(results))
 for (col_name, data), mcol in zip(results.items(), mcols):
-    label = COL_LABELS.get(col_name, col_name)
+    label    = COL_LABELS.get(col_name, col_name)
     gain_str = ("+" if data["gain"] >= 0 else "") + "${:,.0f}".format(data["gain"])
     mcol.metric(label, "${:,.0f}".format(data["final"]), gain_str + " ({:+.1f}%)".format(data["return_pct"]))
 
@@ -96,13 +95,12 @@ st.markdown("---")
 st.subheader("Summary")
 summary_rows = []
 for col_name, data in results.items():
-    label = COL_LABELS.get(col_name, col_name)
     summary_rows.append({
-        "Strategy"       : label,
+        "Strategy"       : COL_LABELS.get(col_name, col_name),
         "Starting Amount": "${:,.0f}".format(starting_amount),
         "Final Value"    : "${:,.0f}".format(data["final"]),
         "Total Gain/Loss": ("+" if data["gain"] >= 0 else "") + "${:,.0f}".format(data["gain"]),
         "Total Return"   : "{:+.1f}%".format(data["return_pct"]),
     })
-st.dataframe(pd.DataFrame(summary_rows), width='stretch', hide_index=True)
-st.caption("Note: Past performance does not guarantee future results. This is for educational purposes only.")
+st.dataframe(pd.DataFrame(summary_rows), width="stretch", hide_index=True)
+st.caption("Past performance does not guarantee future results. For educational purposes only.")

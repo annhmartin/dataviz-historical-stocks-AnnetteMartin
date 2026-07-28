@@ -18,12 +18,11 @@ if source_attr.empty:
     st.warning("No source data. Run A_sentiment_engine.ipynb first.")
     st.stop()
 
-all_tickers = sorted(source_attr["ticker"].unique().tolist())
-selected, start, end, token = sidebar_filters(all_tickers)
+selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
 st.header("Sources")
-st.markdown("Which data source contributes the most articles per ticker? This shows volume (number of articles), not signal quality. GDELT = mainstream news | HN = tech experts | Reddit = retail investors | StockTwits = direct investor posts | EDGAR 8-K = SEC filings")
+st.markdown("Which data source contributes the most articles per ticker? Shows volume (number of articles), not signal quality.")
 
 top = source_attr.groupby("ticker")["item_count"].sum().sort_values(ascending=False).head(25).index.tolist()
 pivot = source_attr[source_attr["ticker"].isin(top)].pivot_table(index="ticker", columns="source", values="item_count", fill_value=0)
@@ -41,7 +40,7 @@ for col in pivot.columns:
     ax.bar(pivot.index, pivot[col], bottom=bottom, label=col, color=src_colors.get(col, "#888888"), edgecolor="white", alpha=0.85)
     bottom += pivot[col].values
 ax.set_ylabel("Share of Articles (%)")
-ax.set_title("Source Contribution Per Ticker (% of total articles - volume, not quality)")
+ax.set_title("Source Contribution Per Ticker")
 ax.tick_params(axis="x", labelrotation=45)
 ax.legend(fontsize=11, facecolor="white", bbox_to_anchor=(1.01, 1), loc="upper left")
 ax.set_facecolor("white")
@@ -54,4 +53,4 @@ with st.expander("Dominant Source Per Ticker"):
            [["ticker","source","item_count","avg_sentiment"]]
            .rename(columns={"ticker": "Ticker", "source": "Dominant Source", "item_count": "Articles", "avg_sentiment": "Avg Sentiment"})
            .sort_values("Articles", ascending=False))
-    st.dataframe(dom.reset_index(drop=True), width='stretch')
+    st.dataframe(dom.reset_index(drop=True), width="stretch")

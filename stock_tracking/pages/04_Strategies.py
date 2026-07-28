@@ -16,7 +16,7 @@ except Exception:
     pass
 
 df_equity = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
-df_trades = load_csv(STRAT_PREFIX + "/trade_log.csv",     token)
+df_trades = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
 
 if df_equity.empty:
     st.warning("No strategy data. Run C_strategy_engine.ipynb first.")
@@ -26,8 +26,7 @@ df_equity["date"] = pd.to_datetime(df_equity["date"])
 if not df_trades.empty and "entry_date" in df_trades.columns:
     df_trades["entry_date"] = pd.to_datetime(df_trades["entry_date"])
 
-ticker_list = df_trades["ticker"].unique().tolist() if not df_trades.empty and "ticker" in df_trades.columns else ["NVDA"]
-selected, start, end, token = sidebar_filters(ticker_list)
+selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
 st.header("Strategies")
@@ -38,6 +37,10 @@ COL_LABELS = {"SP_500_SPY_": "S&P 500 (SPY)", "Buy__Hold": "Buy & Hold", "Sector
 
 eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)].copy()
 strat_cols = [c for c in SHOW_COLS if c in eq.columns]
+
+if not strat_cols:
+    st.warning("No strategy columns found in equity curves file.")
+    st.stop()
 
 mcols = st.columns(len(strat_cols))
 for col_name, mcol in zip(strat_cols, mcols):
@@ -54,6 +57,7 @@ st.markdown("---")
 fig, axes = plt.subplots(2, 1, figsize=(14, 12), facecolor="white", gridspec_kw={"height_ratios": [3, 1]})
 ax = axes[0]
 spy_series = None
+
 for col_name in strat_cols:
     series = eq.set_index("date")[col_name].dropna()
     if series.empty:
@@ -62,8 +66,8 @@ for col_name in strat_cols:
     label = COL_LABELS.get(col_name, col_name)
     ls    = "--" if "SPY" in col_name else "-"
     lw    = 2.5 if col_name in ("Sector_Rotation", "Buy__Hold", "SP_500_SPY_") else 1.8
-    ax.plot(series.index, series.values, color=color, linestyle=ls, linewidth=lw,
-            label=label + ": $" + "{:,.0f}".format(float(series.iloc[-1])), alpha=0.9)
+    ax.plot(series.index, series.values, color=color, linestyle=ls,
+            linewidth=lw, label=label + ": $" + "{:,.0f}".format(float(series.iloc[-1])), alpha=0.9)
     if "SPY" in col_name:
         spy_series = series
 
@@ -72,7 +76,7 @@ if rot_col and spy_series is not None:
     rot_s = eq.set_index("date")[rot_col[0]].dropna()
     spy_a = spy_series.reindex(rot_s.index).interpolate("time")
     ax.fill_between(rot_s.index, spy_a, rot_s, where=rot_s >= spy_a, color="#a9dfbf", alpha=0.2, label="Rotation beating SPY")
-    ax.fill_between(rot_s.index, spy_a, rot_s, where=rot_s < spy_a,  color="#f5b7b1", alpha=0.2, label="SPY beating Rotation")
+    ax.fill_between(rot_s.index, spy_a, rot_s, where=rot_s < spy_a, color="#f5b7b1", alpha=0.2, label="SPY beating Rotation")
 
 ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
 ax.set_title("Portfolio Growth - All Strategies vs S&P 500")
@@ -103,29 +107,44 @@ plt.close()
 st.markdown("---")
 st.subheader("Strategy Definitions")
 st.markdown(
-    "**S&P 500 (SPY)** - Passive benchmark. Money sits in SPY ETF from day one, never touched. The baseline to beat.\n\n"
-    "**Buy & Hold** - Equal weight across all tickers, held from start to end with no changes. Shows what happens if you buy everything and wait.\n\n"
-    "**Sector Rotation** - Each week, buzz sentiment determines which sector has the strongest signal. Money rotates into that sector, weighted by each company's share of the sentiment. Between signals, money stays in the previous sector.\n\n"
-    "**Position Trader** - Waits for a high-conviction sentiment signal then holds for 21 trading days. Money stays in sector rotation between positions rather than sitting in cash."
+    "**S&P 500 (SPY)** - Passive benchmark. Money sits in SPY ETF from day one, never touched.\n\n"
+    "**Buy & Hold** - Equal weight across all tickers, held from start to end with no changes.\n\n"
+    "**Sector Rotation** - Each week, sentiment determines which sector has the strongest buzz. "
+    "Money rotates into that sector's stocks weighted by sentiment share.\n\n"
+    "**Position Trader** - Waits for high-conviction sentiment then holds for 21 trading days. "
+    "Money stays in sector rotation between positions."
 )
 
 if not df_trades.empty:
     st.markdown("---")
     st.subheader("Trade Log")
-    strat_options = ["Sector Rotation", "Position Trader"]
-    strat_filter  = st.multiselect("Filter by Strategy", options=strat_options, default=strat_options)
-    t = df_trades.copy()
+
     strat_map = {"Sector Rotation": "Sector_Rotation", "Position Trader": "Position_Trader"}
-    internal  = [strat_map[s] for s in strat_filter if s in strat_map]
-    if "strategy" in t.columns and internal:
+    strat_options = list(strat_map.keys())
+    strat_filter  = st.multiselect("Filter by Strategy", options=strat_options, default=strat_options)
+
+    t = df_trades.copy()
+    if strat_filter and "strategy" in t.columns:
+        internal = [strat_map[s] for s in strat_filter]
         t = t[t["strategy"].isin(internal)]
+
     if "entry_date" in t.columns:
         t = t[(t["entry_date"] >= pd.Timestamp(start)) & (t["entry_date"] <= pd.Timestamp(end))]
-    col_map = {"ticker": "Ticker", "strategy": "Strategy", "entry_date": "Entry Date",
-               "exit_date": "Exit Date", "entry_price": "Entry Price", "exit_price": "Exit Price",
-               "return_pct": "Return %", "portfolio_val": "Portfolio Value", "trigger_source": "Trigger Source"}
+
+    col_map = {
+        "ticker"        : "Ticker",
+        "strategy"      : "Strategy",
+        "entry_date"    : "Entry Date",
+        "exit_date"     : "Exit Date",
+        "entry_price"   : "Entry Price",
+        "exit_price"    : "Exit Price",
+        "return_pct"    : "Return %",
+        "portfolio_val" : "Portfolio Value",
+        "trigger_source": "Trigger Source",
+    }
     present = [k for k in col_map if k in t.columns]
     t_disp  = t[present].rename(columns=col_map).copy()
+
     if "Return %"        in t_disp.columns: t_disp["Return %"]        = t_disp["Return %"].apply(lambda x: "{:+.2f}%".format(x) if pd.notna(x) else "")
     if "Entry Price"     in t_disp.columns: t_disp["Entry Price"]     = t_disp["Entry Price"].apply(lambda x: "${:,.2f}".format(x) if pd.notna(x) else "")
     if "Exit Price"      in t_disp.columns: t_disp["Exit Price"]      = t_disp["Exit Price"].apply(lambda x: "${:,.2f}".format(x) if pd.notna(x) else "")
@@ -133,6 +152,7 @@ if not df_trades.empty:
     if "Strategy"        in t_disp.columns: t_disp["Strategy"]        = t_disp["Strategy"].str.replace("_", " ")
     if "Entry Date"      in t_disp.columns: t_disp["Entry Date"]      = pd.to_datetime(t_disp["Entry Date"]).dt.date
     if "Exit Date"       in t_disp.columns: t_disp["Exit Date"]       = pd.to_datetime(t_disp["Exit Date"]).dt.date
+
     wins    = sum(1 for x in t["return_pct"] if pd.notna(x) and x > 0) if "return_pct" in t.columns else 0
     total_t = len(t)
     c1, c2, c3, c4 = st.columns(4)
@@ -140,5 +160,6 @@ if not df_trades.empty:
     c2.metric("Win Rate",     "{:.1f}%".format(wins / total_t * 100) if total_t else "N/A")
     c3.metric("Avg Return",   "{:+.2f}%".format(float(t["return_pct"].mean())) if "return_pct" in t.columns and total_t else "N/A")
     c4.metric("Best Trade",   "{:+.1f}%".format(float(t["return_pct"].max()))  if "return_pct" in t.columns and total_t else "N/A")
+
     sort_col = "Entry Date" if "Entry Date" in t_disp.columns else t_disp.columns[0]
-    st.dataframe(t_disp.sort_values(sort_col, ascending=False).head(200).reset_index(drop=True), width='stretch')
+    st.dataframe(t_disp.sort_values(sort_col, ascending=False).head(200).reset_index(drop=True), width="stretch")
