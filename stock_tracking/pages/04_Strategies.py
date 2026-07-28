@@ -141,4 +141,4 @@ if not df_trades.empty:
     c3.metric("Avg Return",   "{:+.2f}%".format(float(t["return_pct"].mean())) if "return_pct" in t.columns and total_t else "N/A")
     c4.metric("Best Trade",   "{:+.1f}%".format(float(t["return_pct"].max()))  if "return_pct" in t.columns and total_t else "N/A")
     sort_col = "Entry Date" if "Entry Date" in t_disp.columns else t_disp.columns[0]
-    st.dataframe(t_disp.sort_values(sort_col, ascending=False).head(200).reset_index(drop=True), use_container_width=True)
+    st.dataframe(t_disp.sort_values(sort_col, ascending=False).head(200).reset_index(drop=True), width='stretch')

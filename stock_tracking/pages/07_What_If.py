@@ -104,5 +104,5 @@ for col_name, data in results.items():
         "Total Gain/Loss": ("+" if data["gain"] >= 0 else "") + "${:,.0f}".format(data["gain"]),
         "Total Return"   : "{:+.1f}%".format(data["return_pct"]),
     })
-st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+st.dataframe(pd.DataFrame(summary_rows), width='stretch', hide_index=True)
 st.caption("Note: Past performance does not guarantee future results. This is for educational purposes only.")

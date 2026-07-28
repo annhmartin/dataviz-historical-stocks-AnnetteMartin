@@ -63,4 +63,4 @@ st.markdown("""
 
 with st.expander("View Raw Correlation Table"):
     cols = [c for c in ["ticker","signal","horizon","corr","pval","n"] if c in plot_df.columns]
-    st.dataframe(plot_df[cols].reset_index(drop=True), use_container_width=True)
+    st.dataframe(plot_df[cols].reset_index(drop=True), width='stretch')
