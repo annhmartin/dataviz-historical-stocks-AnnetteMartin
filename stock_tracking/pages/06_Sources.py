@@ -81,4 +81,4 @@ with st.expander("Dominant Source Per Ticker"):
            [["ticker","source","item_count","avg_sentiment"]]
            .rename(columns={"ticker":"Ticker","source":"Dominant Source","item_count":"Articles","avg_sentiment":"Avg Sentiment"})
            .sort_values("Articles", ascending=False))
-    st.dataframe(dom.reset_index(drop=True), use_container_width=True)
+    st.dataframe(dom.reset_index(drop=True), width='stretch')

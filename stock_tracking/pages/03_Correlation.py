@@ -50,7 +50,7 @@ if not plot_df.empty:
         corr_str = "{:+.3f}".format(float(row["corr"]))
         direction = "Follow positive buzz" if float(row["corr"]) > 0 else "Contrarian - negative buzz more predictive"
         ticker_defs.append({"Ticker": t, "Correlation": corr_str, "Signal Direction": direction, "Signal Type": row["signal"], "Best Horizon": "T+" + str(int(row["horizon"]))})
-    st.dataframe(pd.DataFrame(ticker_defs), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(ticker_defs), width='stretch', hide_index=True)
 
 st.markdown("---")
 st.subheader("How To Read This Chart")

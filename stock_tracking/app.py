@@ -1,23 +1,14 @@
 
 import streamlit as st
 
-st.set_page_config(
-    page_title="Tech Pulse",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+overview  = st.Page("pages/01_Overview.py",      title="Overview",       icon="📊")
+signal    = st.Page("pages/02_Signal_Quality.py", title="Signal Quality", icon="🎯")
+corr      = st.Page("pages/03_Correlation.py",    title="Correlation",    icon="🔗")
+strats    = st.Page("pages/04_Strategies.py",     title="Strategies",     icon="💰")
+moments   = st.Page("pages/05_Key_Moments.py",    title="Key Moments",    icon="🔍")
+sources   = st.Page("pages/06_Sources.py",        title="Sources",        icon="📰")
+whatif    = st.Page("pages/07_What_If.py",        title="What If",        icon="💡")
 
-st.title("Tech Pulse")
-st.markdown("""
-Welcome. Select a page from the left sidebar to get started.
-
-| Page | Description |
-|------|-------------|
-| Overview | Sentiment overlaid with price change |
-| Signal Quality | Four-quadrant prediction accuracy |
-| Correlation | Sentiment-to-price correlation rankings |
-| Strategies | Portfolio comparison vs S&P 500 |
-| Key Moments | Zoom into big price moves |
-| Sources | Which data source drives each ticker |
-| What If | Projected returns on a custom investment amount |
-""")
+pg = st.navigation([overview, signal, corr, strats, moments, sources, whatif])
+st.set_page_config(page_title="Tech Pulse", layout="wide", initial_sidebar_state="expanded")
+pg.run()

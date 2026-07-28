@@ -99,5 +99,5 @@ st.subheader("Summary Table")
 summary_rows = []
 for col_name, data in results.items():
     summary_rows.append({"Strategy":COL_LABELS.get(col_name,col_name),"Starting Amount":"$"+"{:,.0f}".format(starting_amount),"Final Value":"$"+"{:,.0f}".format(data["final"]),"Total Gain/Loss":("+$" if data["gain"]>=0 else "-$")+"{:,.0f}".format(abs(data["gain"])),"Total Return":"{:+.1f}%".format(data["return_pct"])})
-st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+st.dataframe(pd.DataFrame(summary_rows), width='stretch', hide_index=True)
 st.caption("Past performance does not guarantee future results. For educational purposes only.")
