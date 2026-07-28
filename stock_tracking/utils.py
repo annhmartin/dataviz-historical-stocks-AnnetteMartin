@@ -1,23 +1,21 @@
-
 import pandas as pd
 import numpy as np
 import requests
 import io
 import streamlit as st
 from datetime import datetime
+import matplotlib as mpl
 
 GITHUB_REPO   = "annhmartin/dataviz-historical-stocks-AnnetteMartin"
-
-# All data lives inside stock_tracking/ in the repo
 FOLDER        = "stock_tracking"
-OUTPUT_PREFIX = f"{FOLDER}/sentiment_outputs"
-CORR_PREFIX   = f"{FOLDER}/correlation_outputs"
-STRAT_PREFIX  = f"{FOLDER}/strategy_outputs"
-STOCKS_PREFIX = f"{FOLDER}/stocks"
-
+OUTPUT_PREFIX = FOLDER + "/sentiment_outputs"
+CORR_PREFIX   = FOLDER + "/correlation_outputs"
+STRAT_PREFIX  = FOLDER + "/strategy_outputs"
+STOCKS_PREFIX = FOLDER + "/stocks"
 SENTIMENT_THRESHOLD = 0.05
 
 SECTOR_MAP = {
+    "All Tickers"          : [],
     "AI Accelerators"      : ["NVDA","AMD"],
     "Semiconductor Supply" : ["TSM","INTC","QCOM"],
     "Big Tech"             : ["GOOGL","MSFT","AAPL","META"],
@@ -30,33 +28,44 @@ SECTOR_MAP = {
     "Enterprise Fintech"   : ["PYPL"],
 }
 
-DEFAULT_TICKERS = [
-    "NVDA","AAPL","MSFT","GOOGL","META",
-    "CRWD","PANW","PLTR","NVO","PM"
-]
+DEFAULT_TICKERS = ["NVDA","AAPL","MSFT","GOOGL","META","CRWD","PANW","PLTR","NVO","PM"]
 
 STRAT_COLORS = {
-    "SP_500_SPY_"         : "#f39c12",
-    "Buy__Hold"           : "#1a1a2e",
-    "Sector_Rotation"     : "#e74c3c",
-    "Position_Trader"     : "#8e44ad",
-    "Opt_Stop_Global_"    : "#27ae60",
-    "Opt_Stop_Per_Sector_": "#00b4d8",
+    "SP_500_SPY_"     : "#f39c12",
+    "Buy__Hold"       : "#1a1a2e",
+    "Sector_Rotation" : "#e74c3c",
+    "Position_Trader" : "#8e44ad",
 }
 
 STRAT_LABELS = {
-    "SP_500_SPY_"         : "S&P 500 (SPY)",
-    "Buy__Hold"           : "Buy & Hold",
-    "Sector_Rotation"     : "Sector Rotation",
-    "Position_Trader"     : "Position Trader",
-    "Opt_Stop_Global_"    : "Optimal Stop (Global)",
-    "Opt_Stop_Per_Sector_": "Optimal Stop (Sector)",
+    "SP_500_SPY_"     : "S&P 500 (SPY)",
+    "Buy__Hold"       : "Buy & Hold",
+    "Sector_Rotation" : "Sector Rotation",
+    "Position_Trader" : "Position Trader",
 }
+
+def apply_chart_style():
+    mpl.rcParams.update({
+        "figure.facecolor": "white",
+        "axes.facecolor"  : "white",
+        "axes.edgecolor"  : "#cccccc",
+        "axes.grid"       : True,
+        "grid.color"      : "#e8e8e8",
+        "grid.linewidth"  : 0.7,
+        "axes.spines.top" : False,
+        "axes.spines.right": False,
+        "font.size"       : 14,
+        "axes.titlesize"  : 16,
+        "axes.labelsize"  : 14,
+        "xtick.labelsize" : 12,
+        "ytick.labelsize" : 12,
+        "legend.fontsize" : 12,
+    })
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_csv(path, token=None):
-    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/main/{path}"
-    hdrs = {"Authorization": f"Bearer {token}"} if token else {}
+    url = "https://raw.githubusercontent.com/" + GITHUB_REPO + "/main/" + path
+    hdrs = {"Authorization": "Bearer " + token} if token else {}
     try:
         resp = requests.get(url, headers=hdrs, timeout=60)
         if resp.status_code == 404:
@@ -74,7 +83,7 @@ def load_signals(token=None):
     frames = []
     for year in range(2015, datetime.now().year + 1):
         for q in [1, 2, 3, 4]:
-            path = f"{OUTPUT_PREFIX}/daily_signals_{year}_Q{q}.csv"
+            path = OUTPUT_PREFIX + "/daily_signals_" + str(year) + "_Q" + str(q) + ".csv"
             df = load_csv(path, token)
             if not df.empty:
                 frames.append(df)
@@ -86,7 +95,7 @@ def load_signals(token=None):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_price(ticker, token=None):
-    df = load_csv(f"{STOCKS_PREFIX}/prices_{ticker}.csv", token)
+    df = load_csv(STOCKS_PREFIX + "/prices_" + ticker + ".csv", token)
     if df.empty:
         return pd.DataFrame()
     df["Date"] = pd.to_datetime(df["Date"])
@@ -96,7 +105,9 @@ def load_price(ticker, token=None):
     return df.sort_values("Date").reset_index(drop=True)
 
 def get_sig_col(daily_signals):
-    return "adaptive_sentiment" if "adaptive_sentiment" in daily_signals.columns else "norm_sentiment"
+    if "adaptive_sentiment" in daily_signals.columns:
+        return "adaptive_sentiment"
+    return "norm_sentiment"
 
 def get_token():
     try:
@@ -106,36 +117,23 @@ def get_token():
 
 def sidebar_filters(all_tickers):
     token = get_token()
-    st.sidebar.title("📡 Tech Pulse")
+    st.sidebar.title("Tech Pulse")
     st.sidebar.markdown("---")
-
-    sector_filter = st.sidebar.selectbox(
-        "Filter by sector", ["All"] + list(SECTOR_MAP.keys())
-    )
-
-    if sector_filter != "All":
-        default = [t for t in SECTOR_MAP[sector_filter] if t in all_tickers]
+    sector = st.sidebar.radio("Sector", options=list(SECTOR_MAP.keys()), index=0)
+    if sector == "All Tickers":
+        selected = [t for t in DEFAULT_TICKERS if t in all_tickers]
     else:
-        default = [t for t in DEFAULT_TICKERS if t in all_tickers]
-
-    selected = st.sidebar.multiselect(
-        "Select tickers",
-        options=all_tickers,
-        default=default,
-        help="Choose companies to display across all charts"
-    )
-
+        selected = [t for t in SECTOR_MAP[sector] if t in all_tickers]
+    if not selected:
+        selected = [t for t in DEFAULT_TICKERS if t in all_tickers]
     date_range = st.sidebar.date_input(
-        "Date range",
+        "Date Range",
         value=[pd.Timestamp("2018-01-01").date(), pd.Timestamp.today().date()],
         min_value=pd.Timestamp("2015-01-01").date(),
         max_value=pd.Timestamp.today().date(),
     )
     start = pd.Timestamp(date_range[0])
     end   = pd.Timestamp(date_range[1]) if len(date_range) > 1 else pd.Timestamp.today()
-
     st.sidebar.markdown("---")
-    st.sidebar.caption(f"**Tickers selected:** {len(selected)}")
-    st.sidebar.caption(f"**Total available:** {len(all_tickers):,}")
-
+    st.sidebar.caption("Selected: " + ", ".join(selected))
     return selected, start, end, token
