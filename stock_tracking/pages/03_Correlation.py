@@ -16,9 +16,7 @@ except Exception: pass
 
 best_per_ticker = load_csv(CORR_PREFIX + "/best_per_ticker.csv", token)
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_signals(t): return load_signals(t)
-daily_signals = get_signals(token)
+daily_signals = load_signals(token, tickers=selected, start_year=start.year, end_year=end.year)
 
 if best_per_ticker.empty:
     st.warning("No correlation data. Run B_correlation_engine.ipynb first.")

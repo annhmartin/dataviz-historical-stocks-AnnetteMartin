@@ -15,11 +15,7 @@ except Exception:
 
 df_key_moves = load_csv(CORR_PREFIX + "/key_moves.csv", token)
 
-@st.cache_data(ttl=3600, show_spinner="Loading signals...")
-def get_signals(t):
-    return load_signals(t)
-
-daily_signals = get_signals(token)
+daily_signals = load_signals(token, tickers=selected, start_year=start.year, end_year=end.year)
 if df_key_moves.empty or daily_signals.empty:
     st.warning("No key moves data. Run B_correlation_engine.ipynb first.")
     st.stop()
