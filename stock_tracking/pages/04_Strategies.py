@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
 import sys, os
@@ -77,7 +78,7 @@ if rot_col and spy_series is not None:
     ax.fill_between(rot_s.index, spy_a, rot_s, where=rot_s >= spy_a, color="#a9dfbf", alpha=0.2, label="Rotation beating SPY")
     ax.fill_between(rot_s.index, spy_a, rot_s, where=rot_s < spy_a, color="#f5b7b1", alpha=0.2, label="SPY beating Rotation")
 
-ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
 ax.set_title("Portfolio Growth - All Strategies vs S&P 500")
 ax.legend(loc="upper left")
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))

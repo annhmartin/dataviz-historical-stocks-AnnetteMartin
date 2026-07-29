@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import matplotlib.dates as mdates
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -104,7 +105,7 @@ for col_name, data in results.items():
     ax.plot(data["series"].index, data["series"].values, color=raw_color, linestyle=ls,
             linewidth=lw, label=data["label"] + ": $" + "{:,.0f}".format(data["final"]), alpha=0.9)
 ax.axhline(starting_amount, color="#aaaaaa", linewidth=1, linestyle=":", label="Starting amount")
-ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
+ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
 ax.set_title("What If You Had Invested $" + "{:,.0f}".format(starting_amount) + "?")
 ax.legend(loc="upper left")
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
