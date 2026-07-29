@@ -8,7 +8,6 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style
 
-st.set_page_config(page_title="Strategies", layout="wide")
 token = None
 try:
     token = st.secrets["GITHUB_TOKEN"]
