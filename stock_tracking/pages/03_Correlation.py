@@ -34,21 +34,13 @@ if qualified.empty:
     st.info("No tickers have enough data points for a reliable correlation.")
     st.stop()
 
-scope = st.radio("Show", ["Selected sector", "Strongest signals market-wide"],
-                 horizontal=True, key="corr_scope")
-
-if scope == "Selected sector":
-    plot_df = qualified[qualified["ticker"].isin(selected)].sort_values("corr")
-    caption = (f"{len(plot_df)} of {len(selected)} tickers in this sector clear "
-               f"the {MIN_N}-observation minimum")
-else:
-    plot_df = (pd.concat([qualified.nsmallest(20, "corr"), qualified.nlargest(20, "corr")])
-               .drop_duplicates(subset="ticker").sort_values("corr"))
-    caption = (f"Strongest {len(plot_df)} signals from {len(qualified):,} tickers "
-               f"clearing the {MIN_N}-observation minimum")
+# Scoped to the sector chosen in the sidebar
+plot_df = qualified[qualified["ticker"].isin(selected)].sort_values("corr")
+caption = (f"{len(plot_df)} of {len(selected)} tickers in this sector clear "
+           f"the {MIN_N}-observation minimum")
 
 if plot_df.empty:
-    st.info("No tickers in this sector have enough data. Try the market-wide view.")
+    st.info("No tickers in this sector have enough observations for a reliable estimate.")
 else:
     strongest = plot_df["corr"].abs().idxmax()
     colors = [

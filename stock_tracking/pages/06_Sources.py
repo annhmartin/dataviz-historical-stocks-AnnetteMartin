@@ -69,25 +69,31 @@ quality = (sa.groupby("source")
                 items=("item_count", "sum"))
            .reset_index().sort_values("avg_abs"))
 
-colors = [POS if v >= 0 else NEG for v in quality["avg_signed"]]
-fig2 = go.Figure(go.Bar(
-    y=quality["source"], x=quality["avg_abs"], orientation="h",
-    marker_color=colors, marker_line_width=0,
-    text=[f"{v:.3f}" for v in quality["avg_abs"]],
-    textposition="outside", textfont=dict(size=12, color=MUTED),
-    customdata=np.stack([quality["items"], quality["avg_signed"]], axis=-1),
-    hovertemplate="<b>%{y}</b><br>average strength %{x:.3f}"
-                  "<br>net lean %{customdata[1]:+.3f}"
-                  "<br>%{customdata[0]:,} items<extra></extra>"))
+fig2 = go.Figure()
+# Split into two traces so the blue/orange distinction gets a legend
+for lean, colour, label in [(True,  POS, "Leans net positive"),
+                            (False, NEG, "Leans net negative")]:
+    d = quality[(quality["avg_signed"] >= 0) == lean]
+    if d.empty:
+        continue
+    fig2.add_trace(go.Bar(
+        y=d["source"], x=d["avg_abs"], orientation="h",
+        name=label, marker_color=colour, marker_line_width=0,
+        text=[f"{v:.3f}" for v in d["avg_abs"]],
+        textposition="outside", textfont=dict(size=12, color=MUTED),
+        customdata=np.stack([d["items"], d["avg_signed"]], axis=-1),
+        hovertemplate="<b>%{y}</b><br>average strength %{x:.3f}"
+                      "<br>net lean %{customdata[1]:+.3f}"
+                      "<br>%{customdata[0]:,} items<extra></extra>"))
+fig2.update_layout(legend=dict(orientation="h", y=-0.18, x=0))
 fig2.update_xaxes(title="Average absolute sentiment score")
 fig2.update_yaxes(title="")
 
 strongest = quality.iloc[-1]
 titled(fig2,
        f"{strongest['source']} expresses the most strongly worded sentiment",
-       "Bar length is how forcefully a source phrases things, not how often it is right. "
-       "Blue means it leans net positive overall, orange net negative",
-       height=440)
+       "Bar length is how forcefully a source phrases things, not how often it is right",
+       height=460)
 show(fig2)
 
 st.info(

@@ -63,17 +63,24 @@ for ticker in tickers_to_plot:
         continue
 
     sv = sig[sig_col].fillna(0)
-    bar_colors = np.where(sv >= SENTIMENT_THRESHOLD, POS,
-                  np.where(sv <= -SENTIMENT_THRESHOLD, NEG, NEU))
     smooth = sig[sig_col].rolling(roll, min_periods=1).mean()
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    fig.add_trace(go.Bar(
-        x=sig["date"], y=sv, marker_color=bar_colors, marker_line_width=0,
-        name="Daily sentiment", opacity=0.65,
-        hovertemplate="%{x|%d %b %Y}<br>sentiment %{y:.3f}<extra></extra>"),
-        secondary_y=False)
+    # One trace per category so each gets its own legend entry
+    for mask, colour, label in [
+        (sv >= SENTIMENT_THRESHOLD,                              POS, "Positive sentiment"),
+        (sv <= -SENTIMENT_THRESHOLD,                             NEG, "Negative sentiment"),
+        ((sv > -SENTIMENT_THRESHOLD) & (sv < SENTIMENT_THRESHOLD), NEU, "Neutral"),
+    ]:
+        if not mask.any():
+            continue
+        fig.add_trace(go.Bar(
+            x=sig["date"][mask], y=sv[mask],
+            marker_color=colour, marker_line_width=0,
+            name=label, opacity=0.7,
+            hovertemplate="%{x|%d %b %Y}<br>sentiment %{y:.3f}<extra></extra>"),
+            secondary_y=False)
 
     fig.add_trace(go.Scatter(
         x=sig["date"], y=smooth, mode="lines",
@@ -94,7 +101,7 @@ for ticker in tickers_to_plot:
                      showgrid=False, tickformat="+.0f")
     fig.update_layout(
         legend=dict(orientation="h", y=1.02, x=0, yanchor="bottom"),
-        bargap=0.1, hovermode="x unified")
+        barmode="relative", bargap=0.1, hovermode="x unified")
 
     avg_sent = float(sig[sig_col].mean())
     mood = "leaned positive" if avg_sent > 0.02 else ("leaned negative" if avg_sent < -0.02 else "stayed close to neutral")

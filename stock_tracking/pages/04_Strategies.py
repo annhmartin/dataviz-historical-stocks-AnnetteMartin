@@ -136,13 +136,28 @@ if not monthly.empty:
             bar_c.append(CONTEXT); bar_t.append("all lost money")
         else:
             bar_c.append(color_for.get(win, CONTEXT)); bar_t.append(label_for.get(win, win))
-    figm = go.Figure(go.Bar(
-        x=winners.index, y=[1]*len(winners), marker_color=bar_c, marker_line_width=0,
-        customdata=bar_t,
-        hovertemplate="%{x|%b %Y}<br>%{customdata}<extra></extra>"))
+    figm = go.Figure()
+    # One trace per leader so Plotly draws a real legend
+    seen = set()
+    for col, label, colour, _dash, _w in SERIES:
+        mask = [t == label for t in bar_t]
+        if not any(mask):
+            continue
+        seen.add(label)
+        figm.add_trace(go.Bar(
+            x=winners.index[mask], y=[1]*sum(mask),
+            name=label, marker_color=colour, marker_line_width=0,
+            hovertemplate="%{x|%b %Y}<br>" + label + "<extra></extra>"))
+    mask_none = [t == "all lost money" for t in bar_t]
+    if any(mask_none):
+        figm.add_trace(go.Bar(
+            x=winners.index[mask_none], y=[1]*sum(mask_none),
+            name="Every strategy lost", marker_color=CONTEXT, marker_line_width=0,
+            hovertemplate="%{x|%b %Y}<br>every strategy lost money<extra></extra>"))
     figm.update_yaxes(showticklabels=False, showgrid=False, title="")
     figm.update_xaxes(title="")
-    figm.update_layout(bargap=0.05)
+    figm.update_layout(bargap=0.05, barmode="stack",
+                       legend=dict(orientation="h", y=-0.25, x=0))
     titled(figm, "Which strategy was ahead, month by month",
            "Grey marks months where every strategy lost money", height=230)
     show(figm)
