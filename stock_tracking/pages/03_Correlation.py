@@ -6,7 +6,7 @@ import matplotlib.dates as mdates
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import (load_csv, load_signals, sidebar_filters, get_sig_col,
-                   CORR_PREFIX, SENTIMENT_THRESHOLD, apply_chart_style)
+                   load_company_names, CORR_PREFIX, SENTIMENT_THRESHOLD, apply_chart_style)
 
 st.header("Correlation")
 
@@ -63,8 +63,16 @@ plt.close(fig)
 
 st.markdown("---")
 st.subheader("Ticker Definitions")
+st.caption(
+    "Company names come from the SEC's public company register. "
+    "The universe covers every ticker with enough sentiment coverage, "
+    "not just technology names, so unrelated companies can appear here."
+)
 
-TICKER_INFO = {
+company_names = load_company_names()
+
+# Hand-written descriptions for the names most central to this project.
+CURATED = {
     "NVDA": "NVIDIA - AI chips and GPUs",
     "AMD":  "Advanced Micro Devices - CPUs and GPUs",
     "TSM":  "Taiwan Semiconductor - chip foundry",
@@ -95,24 +103,42 @@ TICKER_INFO = {
     "SPOT": "Spotify - music and podcast streaming",
     "PINS": "Pinterest - visual discovery platform",
     "PYPL": "PayPal - digital payments",
-    "GFS":  "GlobalFoundries - semiconductor foundry",
-    "DNUT": "Krispy Kreme - baked goods",
     "SPY":  "SPDR S&P 500 ETF - index benchmark",
     "QQQ":  "Invesco QQQ - Nasdaq 100 index fund",
 }
+
+def describe(ticker):
+    if ticker in CURATED:
+        return CURATED[ticker]
+    name = company_names.get(str(ticker).upper())
+    if name:
+        return name
+    return "Name unavailable"
 
 rows = []
 for _, row in plot_df.iterrows():
     corr_val = float(row["corr"])
     rows.append({
         "Ticker"          : row["ticker"],
-        "Company"         : TICKER_INFO.get(row["ticker"], "See SEC EDGAR for full name"),
-        "Correlation"     : "{:+.3f}".format(corr_val),
+        "Company"         : describe(row["ticker"]),
+        "Correlation"     : corr_val,
         "Signal Direction": "Follow positive buzz" if corr_val > 0 else "Contrarian signal",
         "Best Signal"     : row["signal"],
         "Best Horizon"    : "T+" + str(int(row["horizon"])),
     })
-st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+
+defs_df = pd.DataFrame(rows)
+# Strongest relationship first, regardless of direction
+defs_df = defs_df.reindex(defs_df["Correlation"].abs().sort_values(ascending=False).index)
+defs_df["Correlation"] = defs_df["Correlation"].apply(lambda v: "{:+.3f}".format(v))
+
+unnamed = int((defs_df["Company"] == "Name unavailable").sum())
+if unnamed:
+    st.caption(str(unnamed) + " of " + str(len(defs_df))
+               + " tickers could not be matched to an SEC company name. "
+               "These are often delisted tickers or false matches from the text search.")
+
+st.dataframe(defs_df.reset_index(drop=True), width="stretch", hide_index=True)
 
 st.markdown("---")
 st.subheader("Signal Quality Over Time")

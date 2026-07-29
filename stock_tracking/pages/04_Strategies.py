@@ -11,6 +11,16 @@ from utils import load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style
 
 st.header("Strategies")
 
+st.markdown(
+    "**S&P 500 (SPY)** - Passive benchmark. Money sits in the SPY ETF from day one and is never touched.\n\n"
+    "**Buy & Hold** - Equal weight across all tickers, held start to end with no changes.\n\n"
+    "**Sector Rotation** - Each week sentiment picks the sector with the strongest buzz, and money "
+    "rotates into that sector weighted by each company's share of the sentiment.\n\n"
+    "**Position Trader** - Waits for a high-conviction sentiment signal, then holds for 21 trading days. "
+    "Money sits in sector rotation between positions."
+)
+st.markdown("---")
+
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
@@ -118,17 +128,6 @@ plt.tight_layout()
 st.pyplot(fig)
 plt.close(fig)
 
-st.markdown("---")
-st.subheader("Strategy Definitions")
-st.markdown(
-    "**S&P 500 (SPY)** - Passive benchmark. Money sits in the SPY ETF from day one and is never touched.\n\n"
-    "**Buy & Hold** - Equal weight across all tickers, held start to end with no changes.\n\n"
-    "**Sector Rotation** - Each week sentiment picks the sector with the strongest buzz, and money "
-    "rotates into that sector weighted by each company's share of the sentiment.\n\n"
-    "**Position Trader** - Waits for a high-conviction sentiment signal, then holds for 21 trading days. "
-    "Money sits in sector rotation between positions."
-)
-
 if not df_trades.empty and "strategy" in df_trades.columns:
     st.markdown("---")
     st.subheader("Trade Log")
@@ -185,7 +184,8 @@ if not df_trades.empty and "strategy" in df_trades.columns:
         else:
             st.info("No trades for the selected strategies in this date range.")
 
-    st.caption(
-        "Sector Rotation reallocates weekly rather than opening discrete positions, "
-        "so it does not produce individual trade rows."
+    st.info(
+        "Sector Rotation does not appear in this table. It reallocates across a whole sector "
+        "every week rather than opening and closing discrete positions, so C_strategy_engine "
+        "records it as an equity curve only. Its performance is shown in the chart above."
     )

@@ -192,3 +192,29 @@ def sidebar_filters():
     start = pd.Timestamp(st.session_state["start_date"])
     end   = pd.Timestamp(st.session_state["end_date"])
     return selected, start, end, token
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def load_company_names():
+    """
+    Ticker -> official company name, taken from the SEC's public company list.
+    Cached for a day. Returns {} if the request fails so callers can fall back.
+    """
+    try:
+        resp = requests.get(
+            "https://www.sec.gov/files/company_tickers.json",
+            headers={"User-Agent": "TechPulse research contact@example.com"},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            return {}
+        data = resp.json()
+        names = {}
+        for entry in data.values():
+            t = str(entry.get("ticker", "")).upper().strip()
+            n = str(entry.get("title", "")).strip()
+            if t and n:
+                names[t] = n.title()
+        return names
+    except Exception:
+        return {}
