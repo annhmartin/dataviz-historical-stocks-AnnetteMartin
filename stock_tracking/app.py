@@ -7,13 +7,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-overview = st.Page("pages/01_Overview.py",       title="Overview",       icon="📊")
-signal   = st.Page("pages/02_Signal_Quality.py", title="Signal Quality", icon="🎯")
-corr     = st.Page("pages/03_Correlation.py",    title="Correlation",    icon="🔗")
-strats   = st.Page("pages/04_Strategies.py",     title="Strategies",     icon="💰")
-moments  = st.Page("pages/05_Key_Moments.py",    title="Key Moments",    icon="🔍")
-sources  = st.Page("pages/06_Sources.py",        title="Sources",        icon="📰")
-whatif   = st.Page("pages/07_What_If.py",        title="What If",        icon="💡")
+overview = st.Page("pages/01_Overview.py",       title="Overview")
+signal   = st.Page("pages/02_Signal_Quality.py", title="Signal Quality")
+corr     = st.Page("pages/03_Correlation.py",    title="Correlation")
+strats   = st.Page("pages/04_Strategies.py",     title="Strategies")
+moments  = st.Page("pages/05_Key_Moments.py",    title="Key Moments")
+sources  = st.Page("pages/06_Sources.py",        title="Sources")
+whatif   = st.Page("pages/07_What_If.py",        title="What If")
 
 pg = st.navigation(
     [overview, signal, corr, strats, moments, sources, whatif],

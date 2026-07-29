@@ -1,3 +1,4 @@
+
 import pandas as pd
 import numpy as np
 import requests
@@ -26,8 +27,6 @@ SECTOR_MAP = {
     "Consumer Tech"        : ["NFLX","SPOT","PINS"],
     "Enterprise Fintech"   : ["PYPL"],
 }
-
-DEFAULT_SECTOR = "Big Tech"
 
 STRAT_COLORS = {
     "SP_500_SPY_"     : "#f39c12",
@@ -67,12 +66,10 @@ def load_csv(path, token=None):
     hdrs = {"Authorization": "Bearer " + token} if token else {}
     try:
         resp = requests.get(url, headers=hdrs, timeout=60)
-        if resp.status_code == 404:
-            return pd.DataFrame()
+        if resp.status_code == 404: return pd.DataFrame()
         resp.raise_for_status()
         content = resp.text.strip()
-        if not content:
-            return pd.DataFrame()
+        if not content: return pd.DataFrame()
         return pd.read_csv(io.StringIO(content), low_memory=False)
     except Exception:
         return pd.DataFrame()
@@ -86,8 +83,7 @@ def load_signals(token=None):
             df = load_csv(path, token)
             if not df.empty:
                 frames.append(df)
-    if not frames:
-        return pd.DataFrame()
+    if not frames: return pd.DataFrame()
     df = pd.concat(frames, ignore_index=True)
     df["date"] = pd.to_datetime(df["date"])
     return df
@@ -95,42 +91,52 @@ def load_signals(token=None):
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_price(ticker, token=None):
     df = load_csv(STOCKS_PREFIX + "/prices_" + ticker + ".csv", token)
-    if df.empty:
-        return pd.DataFrame()
+    if df.empty: return pd.DataFrame()
     df["Date"] = pd.to_datetime(df["Date"])
     df["daily_return"] = df["Close"].pct_change(fill_method=None)
     df["pct_7d"]  = df["Close"].pct_change(7, fill_method=None) * 100
     df["cumret"]  = (1 + df["daily_return"].fillna(0)).cumprod() * 100 - 100
     return df.sort_values("Date").reset_index(drop=True)
 
-def get_sig_col(daily_signals):
-    if "adaptive_sentiment" in daily_signals.columns:
-        return "adaptive_sentiment"
-    return "norm_sentiment"
+def get_sig_col(ds):
+    return "adaptive_sentiment" if "adaptive_sentiment" in ds.columns else "norm_sentiment"
 
 def get_token():
-    try:
-        return st.secrets["GITHUB_TOKEN"]
-    except Exception:
-        return None
+    try: return st.secrets["GITHUB_TOKEN"]
+    except Exception: return None
 
 def sidebar_filters():
     token = get_token()
-    st.sidebar.markdown("---")
+
+    # Use session_state so filters persist across page navigation
+    if "sector" not in st.session_state:
+        st.session_state["sector"] = "Big Tech"
+    if "start_date" not in st.session_state:
+        st.session_state["start_date"] = pd.Timestamp("2018-01-01").date()
+    if "end_date" not in st.session_state:
+        st.session_state["end_date"] = pd.Timestamp.today().date()
+
     sector = st.sidebar.radio(
         "Sector",
         options=list(SECTOR_MAP.keys()),
-        index=list(SECTOR_MAP.keys()).index(DEFAULT_SECTOR)
+        index=list(SECTOR_MAP.keys()).index(st.session_state["sector"]),
+        key="sector_radio"
     )
+    st.session_state["sector"] = sector
     selected = list(SECTOR_MAP[sector])
 
     date_range = st.sidebar.date_input(
         "Date Range",
-        value=[pd.Timestamp("2018-01-01").date(), pd.Timestamp.today().date()],
+        value=[st.session_state["start_date"], st.session_state["end_date"]],
         min_value=pd.Timestamp("2015-01-01").date(),
         max_value=pd.Timestamp.today().date(),
+        key="date_range_input"
     )
-    start = pd.Timestamp(date_range[0])
-    end   = pd.Timestamp(date_range[1]) if len(date_range) > 1 else pd.Timestamp.today()
+    if len(date_range) == 2:
+        st.session_state["start_date"] = date_range[0]
+        st.session_state["end_date"]   = date_range[1]
+
+    start = pd.Timestamp(st.session_state["start_date"])
+    end   = pd.Timestamp(st.session_state["end_date"])
 
     return selected, start, end, token
