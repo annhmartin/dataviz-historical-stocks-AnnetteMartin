@@ -66,7 +66,10 @@ else:
             customdata=d["n"] if has_n else None,
             hovertemplate=hover))
     fig.add_vline(x=0, line_color=MUTED, line_width=1.5)
-    fig.update_layout(legend=dict(orientation="h", y=-0.16, x=0))
+    fig.update_layout(
+        legend=dict(orientation="h", yanchor="top", y=-0.22,
+                    xanchor="left", x=0),
+        margin=dict(b=130))
 
     top = plot_df.loc[strongest]
     fig.add_annotation(
@@ -81,7 +84,7 @@ else:
     titled(fig,
            f"{top['ticker']} shows the strongest sentiment-to-price relationship here",
            caption,
-           height=max(400, len(plot_df) * 26 + 190))
+           height=max(430, len(plot_df) * 26 + 230))
     show(fig)
 
 st.markdown("---")

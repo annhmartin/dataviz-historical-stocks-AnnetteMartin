@@ -278,17 +278,20 @@ QUAD_FN = "#CC79A7"   # negative buzz, price rose
 WIN  = POS
 LOSS = NEG
 
-# Data sources, grouped by family so related feeds read as related
+# Data sources.
+# Nine sources, nine genuinely distinct hues spanning the wheel. Drawn from the
+# Okabe-Ito and Paul Tol qualitative schemes, both built and tested to stay
+# separable under red-green colour blindness.
 SOURCE_COLORS = {
-    "gdelt"                   : "#0072B2",
-    "hn"                      : "#E69F00",
-    "stocktwits"              : "#009E73",
-    "edgar_8k"                : "#7B2D8E",
-    "reddit_wallstreetbets"   : "#CC79A7",
-    "reddit_stocks"           : "#B05C86",
-    "reddit_investing"        : "#8E4A6B",
-    "reddit_technology"       : "#6D3A53",
-    "reddit_SecurityAnalysis" : "#4F2A3C",
+    "gdelt"                   : "#0072B2",   # blue
+    "hn"                      : "#E69F00",   # amber
+    "stocktwits"              : "#009E73",   # emerald
+    "edgar_8k"                : "#332288",   # indigo
+    "reddit_wallstreetbets"   : "#D55E00",   # vermillion
+    "reddit_stocks"           : "#88CCEE",   # cyan
+    "reddit_investing"        : "#999933",   # olive
+    "reddit_technology"       : "#AA4499",   # magenta
+    "reddit_SecurityAnalysis" : "#661100",   # brick
 }
 
 def sentiment_color(value, threshold=SENTIMENT_THRESHOLD):
