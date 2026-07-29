@@ -10,7 +10,6 @@ from utils import (load_csv, load_signals, sidebar_filters, get_sig_col,
 
 st.header("Correlation")
 
-# Sidebar must run first so `selected`, `start`, `end` exist
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
@@ -20,26 +19,47 @@ if best_per_ticker.empty:
     st.stop()
 
 st.markdown("How strongly does sentiment predict future price moves? "
-            "Green = positive buzz predicted price UP. "
-            "Red = positive buzz predicted price DOWN.")
+            "Green = positive buzz preceded price going UP. "
+            "Red = positive buzz preceded price going DOWN.")
 
-plot_df = best_per_ticker.copy()
-if "n" in plot_df.columns:
-    plot_df = plot_df[plot_df["n"] >= 200]
-plot_df = plot_df.sort_values("corr")
+MIN_N      = 200   # minimum data points for a correlation to be trustworthy
+TOP_N_SIDE = 20    # strongest signals shown per direction
 
-if not plot_df.empty:
-    fig, ax = plt.subplots(figsize=(11, max(6, len(plot_df) * 0.35)), facecolor="white")
-    colors = ["#e74c3c" if v < 0 else "#27ae60" for v in plot_df["corr"]]
-    labels = plot_df["ticker"] + " (" + plot_df["signal"] + " T+" + plot_df["horizon"].astype(str) + ")"
-    ax.barh(labels, plot_df["corr"], color=colors, edgecolor="white")
-    ax.axvline(0, color="#aaaaaa", linewidth=0.8)
-    ax.set_xlabel("Pearson Correlation (sentiment -> forward price return)")
-    ax.set_title("Best Sentiment Signal Per Ticker")
-    ax.set_facecolor("white")
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+qualified = best_per_ticker.copy()
+if "n" in qualified.columns:
+    qualified = qualified[qualified["n"] >= MIN_N]
+qualified = qualified.dropna(subset=["corr"])
+
+if qualified.empty:
+    st.info("No tickers have enough data points to show a reliable correlation.")
+    st.stop()
+
+# Showing every qualifying ticker produces a figure tens of thousands of pixels
+# tall, so display the strongest signals in each direction instead.
+strongest_pos = qualified.nlargest(TOP_N_SIDE, "corr")
+strongest_neg = qualified.nsmallest(TOP_N_SIDE, "corr")
+plot_df = (pd.concat([strongest_neg, strongest_pos])
+           .drop_duplicates(subset="ticker")
+           .sort_values("corr"))
+
+st.caption(
+    "Showing the " + str(len(plot_df)) + " strongest signals out of "
+    + "{:,}".format(len(qualified)) + " tickers with at least " + str(MIN_N) + " data points."
+)
+
+# Height is capped so the rendered image stays within image-size limits
+fig_height = min(14, max(6, len(plot_df) * 0.35))
+fig, ax = plt.subplots(figsize=(11, fig_height), facecolor="white", dpi=100)
+colors = ["#e74c3c" if v < 0 else "#27ae60" for v in plot_df["corr"]]
+labels = plot_df["ticker"] + " (" + plot_df["signal"] + " T+" + plot_df["horizon"].astype(str) + ")"
+ax.barh(labels, plot_df["corr"], color=colors, edgecolor="white")
+ax.axvline(0, color="#aaaaaa", linewidth=0.8)
+ax.set_xlabel("Pearson Correlation (sentiment -> forward price return)")
+ax.set_title("Strongest Sentiment Signals")
+ax.set_facecolor("white")
+plt.tight_layout()
+st.pyplot(fig)
+plt.close(fig)
 
 st.markdown("---")
 st.subheader("Ticker Definitions")
@@ -81,19 +101,18 @@ TICKER_INFO = {
     "QQQ":  "Invesco QQQ - Nasdaq 100 index fund",
 }
 
-if not plot_df.empty:
-    rows = []
-    for _, row in plot_df.iterrows():
-        corr_val = float(row["corr"])
-        rows.append({
-            "Ticker"          : row["ticker"],
-            "Company"         : TICKER_INFO.get(row["ticker"], "See SEC EDGAR for full name"),
-            "Correlation"     : "{:+.3f}".format(corr_val),
-            "Signal Direction": "Follow positive buzz" if corr_val > 0 else "Contrarian signal",
-            "Best Signal"     : row["signal"],
-            "Best Horizon"    : "T+" + str(int(row["horizon"])),
-        })
-    st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+rows = []
+for _, row in plot_df.iterrows():
+    corr_val = float(row["corr"])
+    rows.append({
+        "Ticker"          : row["ticker"],
+        "Company"         : TICKER_INFO.get(row["ticker"], "See SEC EDGAR for full name"),
+        "Correlation"     : "{:+.3f}".format(corr_val),
+        "Signal Direction": "Follow positive buzz" if corr_val > 0 else "Contrarian signal",
+        "Best Signal"     : row["signal"],
+        "Best Horizon"    : "T+" + str(int(row["horizon"])),
+    })
+st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
 st.markdown("---")
 st.subheader("How To Read This Chart")
@@ -138,7 +157,7 @@ else:
                 return float((active > SENTIMENT_THRESHOLD).sum()) / float(len(active))
 
             sig["roll_acc"] = sig[sig_col].rolling(90, min_periods=20).apply(rolling_accuracy, raw=True)
-            fig2, ax2 = plt.subplots(figsize=(14, 4), facecolor="white")
+            fig2, ax2 = plt.subplots(figsize=(14, 4), facecolor="white", dpi=100)
             ax2.plot(sig["date"], sig["roll_acc"], color="#8e44ad", linewidth=2)
             ax2.axhline(0.5, color="#aaaaaa", linewidth=1, linestyle="--")
             ax2.fill_between(sig["date"], 0.5, sig["roll_acc"],

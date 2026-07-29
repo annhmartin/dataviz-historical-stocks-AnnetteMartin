@@ -42,7 +42,7 @@ src_colors = {
     "edgar_8k"                : "#8e44ad",
 }
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, max(7, len(pivot_vol) * 0.4)), facecolor="white")
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, min(14, max(7, len(pivot_vol) * 0.4))), dpi=100, facecolor="white")
 
 # Left: volume chart
 bottom = np.zeros(len(pivot_vol))
