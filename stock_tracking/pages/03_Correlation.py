@@ -6,141 +6,14 @@ import matplotlib.dates as mdates
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import (load_csv, load_signals, sidebar_filters, get_sig_col,
-                   load_company_names, CORR_PREFIX, SENTIMENT_THRESHOLD, apply_chart_style)
+                   CORR_PREFIX, SENTIMENT_THRESHOLD, apply_chart_style)
 
 st.header("Correlation")
 
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
-best_per_ticker = load_csv(CORR_PREFIX + "/best_per_ticker.csv", token)
-if best_per_ticker.empty:
-    st.warning("No correlation data. Run B_correlation_engine.ipynb first.")
-    st.stop()
-
-st.markdown("How strongly does sentiment predict future price moves? "
-            "Green = positive buzz preceded price going UP. "
-            "Red = positive buzz preceded price going DOWN.")
-
-MIN_N      = 200   # minimum data points for a correlation to be trustworthy
-TOP_N_SIDE = 20    # strongest signals shown per direction
-
-qualified = best_per_ticker.copy()
-if "n" in qualified.columns:
-    qualified = qualified[qualified["n"] >= MIN_N]
-qualified = qualified.dropna(subset=["corr"])
-
-if qualified.empty:
-    st.info("No tickers have enough data points to show a reliable correlation.")
-    st.stop()
-
-# Showing every qualifying ticker produces a figure tens of thousands of pixels
-# tall, so display the strongest signals in each direction instead.
-strongest_pos = qualified.nlargest(TOP_N_SIDE, "corr")
-strongest_neg = qualified.nsmallest(TOP_N_SIDE, "corr")
-plot_df = (pd.concat([strongest_neg, strongest_pos])
-           .drop_duplicates(subset="ticker")
-           .sort_values("corr"))
-
-st.caption(
-    "Showing the " + str(len(plot_df)) + " strongest signals out of "
-    + "{:,}".format(len(qualified)) + " tickers with at least " + str(MIN_N) + " data points."
-)
-
-# Height is capped so the rendered image stays within image-size limits
-fig_height = min(14, max(6, len(plot_df) * 0.35))
-fig, ax = plt.subplots(figsize=(11, fig_height), facecolor="white", dpi=100)
-colors = ["#e74c3c" if v < 0 else "#27ae60" for v in plot_df["corr"]]
-labels = plot_df["ticker"] + " (" + plot_df["signal"] + " T+" + plot_df["horizon"].astype(str) + ")"
-ax.barh(labels, plot_df["corr"], color=colors, edgecolor="white")
-ax.axvline(0, color="#aaaaaa", linewidth=0.8)
-ax.set_xlabel("Pearson Correlation (sentiment -> forward price return)")
-ax.set_title("Strongest Sentiment Signals")
-ax.set_facecolor("white")
-plt.tight_layout()
-st.pyplot(fig)
-plt.close(fig)
-
-st.markdown("---")
-st.subheader("Ticker Definitions")
-st.caption(
-    "Company names come from the SEC's public company register. "
-    "The universe covers every ticker with enough sentiment coverage, "
-    "not just technology names, so unrelated companies can appear here."
-)
-
-company_names = load_company_names()
-
-# Hand-written descriptions for the names most central to this project.
-CURATED = {
-    "NVDA": "NVIDIA - AI chips and GPUs",
-    "AMD":  "Advanced Micro Devices - CPUs and GPUs",
-    "TSM":  "Taiwan Semiconductor - chip foundry",
-    "INTC": "Intel - semiconductors and processors",
-    "QCOM": "Qualcomm - mobile chips and wireless",
-    "GOOGL":"Alphabet / Google - search, cloud, AI",
-    "MSFT": "Microsoft - software, Azure, OpenAI partner",
-    "AAPL": "Apple - iPhone, Mac, services",
-    "META": "Meta Platforms - Facebook, Instagram, WhatsApp",
-    "AMZN": "Amazon - e-commerce and AWS",
-    "SNOW": "Snowflake - cloud data platform",
-    "DDOG": "Datadog - cloud monitoring",
-    "CRM":  "Salesforce - CRM and enterprise software",
-    "NOW":  "ServiceNow - workflow automation",
-    "MDB":  "MongoDB - NoSQL database platform",
-    "CRWD": "CrowdStrike - endpoint cybersecurity",
-    "PANW": "Palo Alto Networks - network security",
-    "OKTA": "Okta - identity and access management",
-    "PLTR": "Palantir - enterprise and government data analytics",
-    "COIN": "Coinbase - cryptocurrency exchange",
-    "TSLA": "Tesla - electric vehicles and energy",
-    "INCY": "Incyte - biopharmaceuticals",
-    "KGC":  "Kinross Gold - gold mining",
-    "NVO":  "Novo Nordisk - pharma, Ozempic and Wegovy",
-    "PM":   "Philip Morris International - tobacco and IQOS",
-    "WPM":  "Wheaton Precious Metals - metals streaming",
-    "NFLX": "Netflix - streaming entertainment",
-    "SPOT": "Spotify - music and podcast streaming",
-    "PINS": "Pinterest - visual discovery platform",
-    "PYPL": "PayPal - digital payments",
-    "SPY":  "SPDR S&P 500 ETF - index benchmark",
-    "QQQ":  "Invesco QQQ - Nasdaq 100 index fund",
-}
-
-def describe(ticker):
-    if ticker in CURATED:
-        return CURATED[ticker]
-    name = company_names.get(str(ticker).upper())
-    if name:
-        return name
-    return "Name unavailable"
-
-rows = []
-for _, row in plot_df.iterrows():
-    corr_val = float(row["corr"])
-    rows.append({
-        "Ticker"          : row["ticker"],
-        "Company"         : describe(row["ticker"]),
-        "Correlation"     : corr_val,
-        "Signal Direction": "Follow positive buzz" if corr_val > 0 else "Contrarian signal",
-        "Best Signal"     : row["signal"],
-        "Best Horizon"    : "T+" + str(int(row["horizon"])),
-    })
-
-defs_df = pd.DataFrame(rows)
-# Strongest relationship first, regardless of direction
-defs_df = defs_df.reindex(defs_df["Correlation"].abs().sort_values(ascending=False).index)
-defs_df["Correlation"] = defs_df["Correlation"].apply(lambda v: "{:+.3f}".format(v))
-
-unnamed = int((defs_df["Company"] == "Name unavailable").sum())
-if unnamed:
-    st.caption(str(unnamed) + " of " + str(len(defs_df))
-               + " tickers could not be matched to an SEC company name. "
-               "These are often delisted tickers or false matches from the text search.")
-
-st.dataframe(defs_df.reset_index(drop=True), width="stretch", hide_index=True)
-
-st.markdown("---")
+# ── Signal quality over time ─────────────────────────────────────────────────
 st.subheader("Signal Quality Over Time")
 
 with st.spinner("Loading sentiment signals..."):
@@ -154,7 +27,7 @@ else:
     if not valid:
         st.info("No signal data for tickers in the selected sector.")
     else:
-        ticker_t = st.selectbox("Ticker for time series", valid, key="corr_ts")
+        ticker_t = st.selectbox("Ticker", valid, key="corr_ts")
         sig_col  = get_sig_col(daily_signals)
         sig = daily_signals[
             (daily_signals["ticker"] == ticker_t)
@@ -187,3 +60,57 @@ else:
             plt.close(fig2)
         else:
             st.info("Not enough signal days to compute rolling quality for this ticker.")
+
+# ── Correlation strength by ticker ───────────────────────────────────────────
+st.markdown("---")
+st.subheader("Sentiment to Price Correlation")
+st.markdown("How strongly does sentiment predict future price moves? "
+            "Green = positive buzz preceded price going UP. "
+            "Red = positive buzz preceded price going DOWN.")
+
+best_per_ticker = load_csv(CORR_PREFIX + "/best_per_ticker.csv", token)
+if best_per_ticker.empty:
+    st.warning("No correlation data. Run B_correlation_engine.ipynb first.")
+    st.stop()
+
+MIN_N = 200
+
+qualified = best_per_ticker.copy()
+if "n" in qualified.columns:
+    qualified = qualified[qualified["n"] >= MIN_N]
+qualified = qualified.dropna(subset=["corr"])
+
+scope = st.radio("Show", ["Selected sector", "Strongest signals overall"],
+                 horizontal=True, key="corr_scope")
+
+if scope == "Selected sector":
+    plot_df = qualified[qualified["ticker"].isin(selected)].sort_values("corr")
+    if plot_df.empty:
+        st.info("None of the tickers in this sector have at least "
+                + str(MIN_N) + " data points. Switch to "
+                '"Strongest signals overall" to see the market-wide view.')
+        st.stop()
+    st.caption("Showing " + str(len(plot_df)) + " of " + str(len(selected))
+               + " tickers in this sector that have at least " + str(MIN_N) + " data points.")
+else:
+    TOP_N_SIDE = 20
+    plot_df = (pd.concat([qualified.nsmallest(TOP_N_SIDE, "corr"),
+                          qualified.nlargest(TOP_N_SIDE, "corr")])
+               .drop_duplicates(subset="ticker")
+               .sort_values("corr"))
+    st.caption("Showing the " + str(len(plot_df)) + " strongest signals out of "
+               + "{:,}".format(len(qualified)) + " tickers market-wide with at least "
+               + str(MIN_N) + " data points.")
+
+fig_height = min(14, max(4, len(plot_df) * 0.35))
+fig, ax = plt.subplots(figsize=(11, fig_height), facecolor="white", dpi=100)
+colors = ["#e74c3c" if v < 0 else "#27ae60" for v in plot_df["corr"]]
+labels = plot_df["ticker"] + " (" + plot_df["signal"] + " T+" + plot_df["horizon"].astype(str) + ")"
+ax.barh(labels, plot_df["corr"], color=colors, edgecolor="white")
+ax.axvline(0, color="#aaaaaa", linewidth=0.8)
+ax.set_xlabel("Pearson Correlation (sentiment -> forward price return)")
+ax.set_title("Best Sentiment Signal Per Ticker")
+ax.set_facecolor("white")
+plt.tight_layout()
+st.pyplot(fig)
+plt.close(fig)

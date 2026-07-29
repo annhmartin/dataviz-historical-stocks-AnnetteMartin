@@ -61,6 +61,11 @@ for (col, label, color, ls, lw), mcol in zip(STRATEGIES, mcols):
     ret   = (final / s0 - 1) * 100 if s0 else 0
     mcol.metric(label, "$" + "{:,.0f}".format(final), "{:+.1f}%".format(ret))
 
+st.caption(
+    "The chart below is portfolio-level: each strategy allocates across the whole universe, "
+    "so the sector filter does not apply to it. Use the trade log lower down to view trades "
+    "for the selected sector."
+)
 st.markdown("---")
 
 def quarter_fmt(x, _pos=None):
@@ -141,8 +146,15 @@ if not df_trades.empty and "strategy" in df_trades.columns:
     if not present:
         st.info("No individual trades recorded for the strategies shown on this page.")
     else:
-        chosen = st.multiselect("Filter by Strategy", options=present, default=present)
+        fcol1, fcol2 = st.columns([2, 1])
+        with fcol1:
+            chosen = st.multiselect("Filter by Strategy", options=present, default=present)
+        with fcol2:
+            sector_only = st.checkbox("Selected sector only", value=False)
+
         t = df_trades[df_trades["strategy"].isin(chosen)].copy() if chosen else df_trades.iloc[0:0].copy()
+        if sector_only and "ticker" in t.columns:
+            t = t[t["ticker"].isin(selected)]
 
         if "entry_date" in t.columns:
             t["entry_date"] = pd.to_datetime(t["entry_date"])

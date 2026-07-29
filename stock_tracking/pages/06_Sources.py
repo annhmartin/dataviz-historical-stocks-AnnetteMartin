@@ -18,6 +18,17 @@ if source_attr.empty:
 
 st.markdown("Which data source contributes the most articles per ticker?")
 
+scope = st.radio("Show", ["Selected sector", "Highest volume overall"],
+                 horizontal=True, key="src_scope")
+
+if scope == "Selected sector":
+    source_attr = source_attr[source_attr["ticker"].isin(selected)]
+    if source_attr.empty:
+        st.info("No source data for tickers in this sector.")
+        st.stop()
+    st.caption("Scoped to the " + str(source_attr["ticker"].nunique())
+               + " tickers in this sector that have source data.")
+
 src_colors = {
     "hn"                      : "#e67e22",
     "reddit_wallstreetbets"   : "#e74c3c",
@@ -32,6 +43,9 @@ src_colors = {
 
 top = (source_attr.groupby("ticker")["item_count"].sum()
        .sort_values(ascending=False).head(25).index.tolist())
+if not top:
+    st.info("No tickers to display.")
+    st.stop()
 pivot_vol = source_attr[source_attr["ticker"].isin(top)].pivot_table(
     index="ticker", columns="source", values="item_count", fill_value=0
 )
