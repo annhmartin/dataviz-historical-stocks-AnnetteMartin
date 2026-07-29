@@ -34,16 +34,16 @@ st.markdown("Enter a starting investment amount to see how each strategy would h
 
 starting_amount = st.number_input("Starting Investment ($)", min_value=100, max_value=10000000, value=10000, step=1000)
 
-SHOW_COLS  = ["SP_500_SPY_", "Buy__Hold", "Sector_Rotation", "Position_Trader"]
-COL_COLORS = {"SP_500_SPY_": "#f39c12", "Buy__Hold": "#1a1a2e", "Sector_Rotation": "#e74c3c", "Position_Trader": "#8e44ad"}
-COL_LABELS = {"SP_500_SPY_": "S&P 500 (SPY)", "Buy__Hold": "Buy & Hold", "Sector_Rotation": "Sector Rotation", "Position_Trader": "Position Trader"}
+SHOW_COLS  = ["S&P_500_SPY", "Buy_&_Hold", "Sector_Rotation", "Position_Trader"]
+COL_COLORS = {"S&P_500_SPY": "#f39c12", "Buy_&_Hold": "#1a1a2e", "Sector_Rotation": "#e74c3c", "Position_Trader": "#8e44ad"}
+COL_LABELS = {"S&P_500_SPY": "S&P 500 (SPY)", "Buy_&_Hold": "Buy & Hold", "Sector_Rotation": "Sector Rotation", "Position_Trader": "Position Trader"}
 
 eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)].copy()
 
 # Try flexible column name matching
 name_variants = {
-    "S&P 500 (SPY)"   : ["SP_500_SPY_", "SPY", "SP500", "sp_500_spy"],
-    "Buy & Hold"      : ["Buy__Hold", "Buy_Hold", "BuyHold", "buy_hold"],
+    "S&P 500 (SPY)"   : ["S&P_500_SPY", "SPY", "SP500", "sp_500_spy"],
+    "Buy & Hold"      : ["Buy_&_Hold", "Buy_Hold", "BuyHold", "buy_hold"],
     "Sector Rotation" : ["Sector_Rotation", "sector_rotation"],
     "Position Trader" : ["Position_Trader", "position_trader"],
 }
@@ -158,4 +158,3 @@ for col_name, data in results.items():
         "Total Return"   : "{:+.1f}%".format(data["return_pct"]),
     })
 st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
-st.caption("Past performance does not guarantee future results. For educational purposes only.")

@@ -115,19 +115,6 @@ for _, row in plot_df.iterrows():
 st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
 
 st.markdown("---")
-st.subheader("How To Read This Chart")
-st.markdown("""
-| Term | Definition |
-|------|-----------|
-| **Pearson Correlation** | -1.0 to +1.0. 0 means no relationship. Further from 0 is a stronger link between sentiment and price. |
-| **Positive bar (green)** | Positive buzz preceded the price going UP. Follow the signal. |
-| **Negative bar (red)** | Positive buzz preceded the price going DOWN. Contrarian: negative buzz may be the useful signal here. |
-| **Signal type** | Which sentiment score worked best: norm_sentiment (raw), adaptive_sentiment (window-adjusted), roll_Nd (N-day rolling average). |
-| **T+N horizon** | Trading days forward the correlation was measured. T+1 is next day, T+21 is about one month. |
-| **n** | Number of data point pairs used. Everything shown has n >= 200. |
-""")
-
-st.markdown("---")
 st.subheader("Signal Quality Over Time")
 
 with st.spinner("Loading sentiment signals..."):

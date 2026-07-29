@@ -9,31 +9,40 @@ from utils import load_signals, load_price, sidebar_filters, get_sig_col, SENTIM
 
 st.header("Overview")
 
-# Sidebar first so we know which tickers to load
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
 with st.spinner("Loading sentiment signals..."):
-    daily_signals = load_signals(
-        token,
-        tickers=selected,
-        start_year=start.year,
-        end_year=end.year,
-    )
+    daily_signals = load_signals(token, tickers=selected,
+                                 start_year=start.year, end_year=end.year)
 
 if daily_signals.empty:
     st.error("No signal data found for this sector and date range.")
     st.stop()
 
 sig_col = get_sig_col(daily_signals)
-st.caption("Loaded " + "{:,}".format(len(daily_signals)) + " signal rows for "
-           + str(daily_signals["ticker"].nunique()) + " tickers.")
-
-st.markdown("Bars = daily sentiment (green=positive, red=negative, gray=neutral). "
-            "Dark line = rolling average. Blue shading = 7-day price change %.")
 
 view = st.radio("View Mode", ["One Ticker", "All Stacked"], horizontal=True)
-roll = st.slider("Rolling Window (days)", 7, 90, 30)
+
+ctrl, legend = st.columns([2, 3])
+with ctrl:
+    roll = st.slider("Rolling Window (days)", 7, 90, 30)
+with legend:
+    st.markdown(
+        "<div style='padding-top:1.9rem; font-size:0.95rem;'>"
+        "<span style='display:inline-block;width:14px;height:14px;background:#27ae60;"
+        "border-radius:3px;vertical-align:middle;margin-right:6px;'></span>Positive"
+        "<span style='display:inline-block;width:14px;height:14px;background:#e74c3c;"
+        "border-radius:3px;vertical-align:middle;margin:0 6px 0 18px;'></span>Negative"
+        "<span style='display:inline-block;width:14px;height:14px;background:#bdc3c7;"
+        "border-radius:3px;vertical-align:middle;margin:0 6px 0 18px;'></span>Neutral"
+        "<span style='display:inline-block;width:22px;height:3px;background:#2c3e50;"
+        "vertical-align:middle;margin:0 6px 0 18px;'></span>Rolling average"
+        "<span style='display:inline-block;width:22px;height:3px;background:#2980b9;"
+        "vertical-align:middle;margin:0 6px 0 18px;'></span>7-day price change"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 valid = [t for t in selected if t in set(daily_signals["ticker"])]
 if not valid:
@@ -57,7 +66,7 @@ for ticker in tickers_to_plot:
 
     has_signal = int(sig[sig_col].notna().sum())
 
-    fig, ax1 = plt.subplots(figsize=(14, 5), facecolor="white")
+    fig, ax1 = plt.subplots(figsize=(14, 5), facecolor="white", dpi=100)
     ax2 = ax1.twinx()
 
     pct = price["pct_7d"].fillna(0)
@@ -78,8 +87,7 @@ for ticker in tickers_to_plot:
             for v in sv
         ]
         ax1.bar(sig["date"], sv, color=colors_s, alpha=0.5, width=2)
-        ax1.plot(sig["date"], smooth, color="#2c3e50", linewidth=2, alpha=0.9,
-                 label=str(roll) + "d rolling avg")
+        ax1.plot(sig["date"], smooth, color="#2c3e50", linewidth=2, alpha=0.9)
     else:
         ax1.text(0.5, 0.5, "Only " + str(has_signal) + " signal days",
                  ha="center", va="center", transform=ax1.transAxes, color="#888888")
@@ -87,11 +95,9 @@ for ticker in tickers_to_plot:
     ax1.axhline(0, color="#aaaaaa", linewidth=0.5)
     ax1.set_ylabel("Sentiment Score")
     ax1.set_facecolor("white")
-    ax1.set_title(ticker + " - Sentiment + 7-Day % Price Change | "
+    ax1.set_title(ticker + " - Sentiment and 7-Day % Price Change | "
                   + str(has_signal) + " signal days")
     ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    if has_signal >= 5:
-        ax1.legend(loc="upper left")
     plt.tight_layout()
     st.pyplot(fig)
     plt.close(fig)

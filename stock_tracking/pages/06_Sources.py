@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -9,26 +8,15 @@ from utils import load_csv, sidebar_filters, OUTPUT_PREFIX, apply_chart_style
 
 st.header("Sources")
 
-token = None
-try: token = st.secrets["GITHUB_TOKEN"]
-except Exception: pass
+selected, start, end, token = sidebar_filters()
+apply_chart_style()
 
 source_attr = load_csv(OUTPUT_PREFIX + "/source_attribution.csv", token)
 if source_attr.empty:
     st.warning("No source data. Run A_sentiment_engine.ipynb first.")
     st.stop()
 
-selected, start, end, token = sidebar_filters()
-apply_chart_style()
-
-st.markdown("Which data source contributes the most articles per ticker? Left = volume share. Right = average sentiment strength (signal quality) per source.")
-
-top = source_attr.groupby("ticker")["item_count"].sum().sort_values(ascending=False).head(25).index.tolist()
-pivot_vol = source_attr[source_attr["ticker"].isin(top)].pivot_table(
-    index="ticker", columns="source", values="item_count", fill_value=0
-)
-pivot_vol = pivot_vol.div(pivot_vol.sum(axis=1), axis=0) * 100
-pivot_vol = pivot_vol.sort_values(pivot_vol.columns[0], ascending=False)
+st.markdown("Which data source contributes the most articles per ticker?")
 
 src_colors = {
     "hn"                      : "#e67e22",
@@ -42,9 +30,16 @@ src_colors = {
     "edgar_8k"                : "#8e44ad",
 }
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, min(14, max(7, len(pivot_vol) * 0.4))), dpi=100, facecolor="white")
+top = (source_attr.groupby("ticker")["item_count"].sum()
+       .sort_values(ascending=False).head(25).index.tolist())
+pivot_vol = source_attr[source_attr["ticker"].isin(top)].pivot_table(
+    index="ticker", columns="source", values="item_count", fill_value=0
+)
+pivot_vol = pivot_vol.div(pivot_vol.sum(axis=1), axis=0) * 100
+pivot_vol = pivot_vol.sort_values(pivot_vol.columns[0], ascending=False)
 
-# Left: volume chart
+fig1, ax1 = plt.subplots(figsize=(14, min(10, max(6, len(pivot_vol) * 0.4))),
+                         facecolor="white", dpi=100)
 bottom = np.zeros(len(pivot_vol))
 for col in pivot_vol.columns:
     ax1.bar(pivot_vol.index, pivot_vol[col], bottom=bottom, label=col,
@@ -53,20 +48,25 @@ for col in pivot_vol.columns:
 ax1.set_ylabel("Share of Articles (%)")
 ax1.set_title("Volume: Source Contribution Per Ticker")
 ax1.tick_params(axis="x", labelrotation=45)
-ax1.legend(fontsize=9, facecolor="white", bbox_to_anchor=(0, -0.35), loc="upper left", ncol=2)
+ax1.legend(fontsize=10, facecolor="white", bbox_to_anchor=(1.01, 1), loc="upper left")
 ax1.set_facecolor("white")
+plt.tight_layout()
+st.pyplot(fig1)
+plt.close(fig1)
 
-# Right: quality chart — avg absolute sentiment per source
 source_quality = (
     source_attr.groupby("source")
     .agg(
-        avg_abs_sentiment = ("avg_sentiment", lambda x: float(x.abs().mean())),
-        avg_sentiment     = ("avg_sentiment", "mean"),
-        total_items       = ("item_count",    "sum"),
+        avg_abs_sentiment=("avg_sentiment", lambda x: float(x.abs().mean())),
+        avg_sentiment=("avg_sentiment", "mean"),
+        total_items=("item_count", "sum"),
     )
     .reset_index()
     .sort_values("avg_abs_sentiment", ascending=True)
 )
+
+fig2, ax2 = plt.subplots(figsize=(14, min(8, max(5, len(source_quality) * 0.5))),
+                         facecolor="white", dpi=100)
 q_colors = ["#27ae60" if v >= 0 else "#e74c3c" for v in source_quality["avg_sentiment"]]
 bars = ax2.barh(source_quality["source"], source_quality["avg_abs_sentiment"],
                 color=q_colors, edgecolor="white")
@@ -74,13 +74,12 @@ for bar, val in zip(bars, source_quality["avg_abs_sentiment"]):
     ax2.text(bar.get_width() + 0.001, bar.get_y() + bar.get_height() / 2,
              "{:.3f}".format(val), va="center", fontsize=11)
 ax2.axvline(0, color="#aaaaaa", linewidth=0.8)
-ax2.set_xlabel("Avg Absolute Sentiment Score (signal strength)")
-ax2.set_title("Quality: Signal Strength Per Source\n(green = net positive avg, red = net negative avg)")
+ax2.set_xlabel("Average Absolute Sentiment Score (signal strength)")
+ax2.set_title("Quality: Signal Strength Per Source (green = net positive, red = net negative)")
 ax2.set_facecolor("white")
-
 plt.tight_layout()
-st.pyplot(fig)
-plt.close()
+st.pyplot(fig2)
+plt.close(fig2)
 
 st.markdown("---")
 st.markdown("""
@@ -98,12 +97,10 @@ st.markdown("""
 """)
 
 with st.expander("Dominant Source Per Ticker"):
-    dom = (
-        source_attr.sort_values("item_count", ascending=False)
-        .drop_duplicates(subset="ticker")
-        [["ticker", "source", "item_count", "avg_sentiment"]]
-        .rename(columns={"ticker": "Ticker", "source": "Dominant Source",
-                          "item_count": "Articles", "avg_sentiment": "Avg Sentiment"})
-        .sort_values("Articles", ascending=False)
-    )
-    st.dataframe(dom.reset_index(drop=True), use_container_width=True)
+    dom = (source_attr.sort_values("item_count", ascending=False)
+           .drop_duplicates(subset="ticker")
+           [["ticker", "source", "item_count", "avg_sentiment"]]
+           .rename(columns={"ticker": "Ticker", "source": "Dominant Source",
+                            "item_count": "Articles", "avg_sentiment": "Avg Sentiment"})
+           .sort_values("Articles", ascending=False))
+    st.dataframe(dom.reset_index(drop=True), width="stretch", hide_index=True)

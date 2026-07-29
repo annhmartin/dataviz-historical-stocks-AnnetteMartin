@@ -23,11 +23,7 @@ sig_col = get_sig_col(daily_signals)
 
 st.markdown(
     "Each dot is one day where sentiment crossed the neutral threshold. "
-    "The quadrant shows whether the prediction was correct.\n\n"
-    "- True Positive (top-right, green): positive buzz, stock went UP\n"
-    "- False Positive (bottom-right, red): positive buzz, stock went DOWN\n"
-    "- True Negative (bottom-left, blue): negative buzz, stock went DOWN\n"
-    "- False Negative (top-left, orange): negative buzz, stock went UP\n\n"
+    "The quadrant shows whether the prediction was correct. "
     "Dot size = number of stories that day. Orange line = overall trend."
 )
 
@@ -94,7 +90,7 @@ c3.metric("False Positive", str(fp), str(round(fp / total * 100)) + "%")
 c4.metric("True Negative",  str(tn), str(round(tn / total * 100)) + "%")
 c5.metric("False Negative", str(fn), str(round(fn / total * 100)) + "%")
 
-fig, ax = plt.subplots(figsize=(9, 7), facecolor="white")
+fig, ax = plt.subplots(figsize=(9, 7), facecolor="white", dpi=100)
 ax.scatter(df_plot["sent"], df_plot["ret"], c=df_plot["c"], alpha=0.65,
            s=df_plot["stories"].clip(1, 50) * 8 + 15,
            edgecolors="white", linewidths=0.4, zorder=3)
@@ -119,3 +115,11 @@ ax.set_facecolor("white")
 plt.tight_layout()
 st.pyplot(fig)
 plt.close(fig)
+
+st.markdown("---")
+st.markdown(
+    "**True Positive** (top-right, green): positive buzz, stock went UP  \n"
+    "**False Positive** (bottom-right, red): positive buzz, stock went DOWN  \n"
+    "**True Negative** (bottom-left, blue): negative buzz, stock went DOWN  \n"
+    "**False Negative** (top-left, orange): negative buzz, stock went UP"
+)
