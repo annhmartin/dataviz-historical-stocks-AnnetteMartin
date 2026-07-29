@@ -43,24 +43,34 @@ if plot_df.empty:
     st.info("No tickers in this sector have enough observations for a reliable estimate.")
 else:
     strongest = plot_df["corr"].abs().idxmax()
-    colors = [
-        (POS if v > 0 else NEG) if i == strongest else CONTEXT
-        for i, v in zip(plot_df.index, plot_df["corr"])
-    ]
     labels = plot_df["ticker"] + "  " + plot_df["signal"] + " T+" + plot_df["horizon"].astype(str)
+    plot_df = plot_df.assign(label=labels)
 
-    fig = go.Figure(go.Bar(
-        y=labels, x=plot_df["corr"], orientation="h",
-        marker_color=colors, marker_line_width=0,
-        customdata=plot_df["n"] if "n" in plot_df.columns else None,
-        hovertemplate="<b>%{y}</b><br>correlation %{x:+.4f}"
-                      + ("<br>%{customdata:,} observations" if "n" in plot_df.columns else "")
-                      + "<extra></extra>"))
+    has_n = "n" in plot_df.columns
+    hover = ("<b>%{y}</b><br>correlation %{x:+.4f}"
+             + ("<br>%{customdata:,} observations" if has_n else "")
+             + "<extra></extra>")
+
+    fig = go.Figure()
+    # Separate traces so the direction of the relationship gets a legend
+    for positive, colour, name in [
+        (True,  POS, "Follows the buzz — positive sentiment led to gains"),
+        (False, NEG, "Contrarian — positive sentiment led to losses"),
+    ]:
+        d = plot_df[(plot_df["corr"] > 0) == positive]
+        if d.empty:
+            continue
+        fig.add_trace(go.Bar(
+            y=d["label"], x=d["corr"], orientation="h",
+            name=name, marker_color=colour, marker_line_width=0,
+            customdata=d["n"] if has_n else None,
+            hovertemplate=hover))
     fig.add_vline(x=0, line_color=MUTED, line_width=1.5)
+    fig.update_layout(legend=dict(orientation="h", y=-0.16, x=0))
 
     top = plot_df.loc[strongest]
     fig.add_annotation(
-        x=float(top["corr"]), y=f"{top['ticker']}  {top['signal']} T+{int(top['horizon'])}",
+        x=float(top["corr"]), y=top["label"],
         text="  strongest  ", showarrow=False,
         xanchor="left" if top["corr"] > 0 else "right",
         font=dict(size=12, color=POS if top["corr"] > 0 else NEG))
@@ -71,7 +81,7 @@ else:
     titled(fig,
            f"{top['ticker']} shows the strongest sentiment-to-price relationship here",
            caption,
-           height=max(380, len(plot_df) * 26 + 150))
+           height=max(400, len(plot_df) * 26 + 190))
     show(fig)
 
 st.markdown("---")

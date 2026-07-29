@@ -186,8 +186,7 @@ def sidebar_filters():
     if latest is not None:
         if days_old is not None and days_old > 7:
             st.sidebar.warning(
-                f"Data last updated {latest} ({days_old} days ago). "
-                "Run incremental_updater.ipynb to refresh."
+                f"Data last updated {latest} ({days_old} days ago)."
             )
         else:
             st.sidebar.caption(f"Data current to {latest}")

@@ -98,8 +98,7 @@ show(fig2)
 
 st.info(
     "Strength of language and accuracy of prediction are separate properties. "
-    "A source can be consistently emphatic and consistently wrong. Section 8 of "
-    "B_correlation_engine measures hit rates directly and sets the model weights from those."
+    "A source can be consistently emphatic and consistently wrong."
 )
 
 with st.expander("Dominant source per ticker"):
