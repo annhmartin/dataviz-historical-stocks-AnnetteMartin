@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_csv, sidebar_filters, OUTPUT_PREFIX, apply_chart_style
+from utils import (load_csv, sidebar_filters, OUTPUT_PREFIX, apply_chart_style,
+                   POS, NEG, INK, AXIS, MUTED, GRID, CANVAS, SOURCE_COLORS)
 
 st.header("Sources")
 
@@ -29,17 +30,7 @@ if scope == "Selected sector":
     st.caption("Scoped to the " + str(source_attr["ticker"].nunique())
                + " tickers in this sector that have source data.")
 
-src_colors = {
-    "hn"                      : "#e67e22",
-    "reddit_wallstreetbets"   : "#e74c3c",
-    "reddit_stocks"           : "#c0392b",
-    "reddit_investing"        : "#922b21",
-    "reddit_technology"       : "#7b241c",
-    "reddit_SecurityAnalysis" : "#641e16",
-    "gdelt"                   : "#2980b9",
-    "stocktwits"              : "#27ae60",
-    "edgar_8k"                : "#8e44ad",
-}
+src_colors = SOURCE_COLORS
 
 top = (source_attr.groupby("ticker")["item_count"].sum()
        .sort_values(ascending=False).head(25).index.tolist())
@@ -53,17 +44,17 @@ pivot_vol = pivot_vol.div(pivot_vol.sum(axis=1), axis=0) * 100
 pivot_vol = pivot_vol.sort_values(pivot_vol.columns[0], ascending=False)
 
 fig1, ax1 = plt.subplots(figsize=(14, min(10, max(6, len(pivot_vol) * 0.4))),
-                         facecolor="white", dpi=100)
+                         facecolor=CANVAS, dpi=100)
 bottom = np.zeros(len(pivot_vol))
 for col in pivot_vol.columns:
     ax1.bar(pivot_vol.index, pivot_vol[col], bottom=bottom, label=col,
-            color=src_colors.get(col, "#888888"), edgecolor="white", alpha=0.85)
+            color=src_colors.get(col, MUTED), edgecolor="white", alpha=0.85)
     bottom += pivot_vol[col].values
 ax1.set_ylabel("Share of Articles (%)")
 ax1.set_title("Volume: Source Contribution Per Ticker")
 ax1.tick_params(axis="x", labelrotation=45)
-ax1.legend(fontsize=10, facecolor="white", bbox_to_anchor=(1.01, 1), loc="upper left")
-ax1.set_facecolor("white")
+ax1.legend(fontsize=10, facecolor=CANVAS, bbox_to_anchor=(1.01, 1), loc="upper left")
+ax1.set_facecolor(CANVAS)
 plt.tight_layout()
 st.pyplot(fig1)
 plt.close(fig1)
@@ -80,17 +71,17 @@ source_quality = (
 )
 
 fig2, ax2 = plt.subplots(figsize=(14, min(8, max(5, len(source_quality) * 0.5))),
-                         facecolor="white", dpi=100)
-q_colors = ["#27ae60" if v >= 0 else "#e74c3c" for v in source_quality["avg_sentiment"]]
+                         facecolor=CANVAS, dpi=100)
+q_colors = [POS if v >= 0 else NEG for v in source_quality["avg_sentiment"]]
 bars = ax2.barh(source_quality["source"], source_quality["avg_abs_sentiment"],
                 color=q_colors, edgecolor="white")
 for bar, val in zip(bars, source_quality["avg_abs_sentiment"]):
     ax2.text(bar.get_width() + 0.001, bar.get_y() + bar.get_height() / 2,
              "{:.3f}".format(val), va="center", fontsize=11)
-ax2.axvline(0, color="#aaaaaa", linewidth=0.8)
+ax2.axvline(0, color=AXIS, linewidth=0.8)
 ax2.set_xlabel("Average Absolute Sentiment Score (signal strength)")
 ax2.set_title("Quality: Signal Strength Per Source (green = net positive, red = net negative)")
-ax2.set_facecolor("white")
+ax2.set_facecolor(CANVAS)
 plt.tight_layout()
 st.pyplot(fig2)
 plt.close(fig2)

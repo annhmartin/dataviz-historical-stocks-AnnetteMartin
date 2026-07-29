@@ -7,7 +7,8 @@ import matplotlib.ticker as mticker
 import matplotlib.dates as mdates
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style
+from utils import (load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style,
+                   INK, AXIS, MUTED, GRID, CANVAS, WIN, LOSS, STRAT_COLORS, STRAT_LABELS)
 
 st.header("What If")
 
@@ -17,12 +18,39 @@ except Exception: pass
 
 df_equity = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
 df_trades = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
+df_sector = load_csv(STRAT_PREFIX + "/equity_curves_by_sector.csv", token)
 
-if df_equity.empty:
+if df_equity.empty and df_sector.empty:
     st.warning("No strategy data. Run C_strategy_engine.ipynb first.")
     st.stop()
 
-df_equity["date"] = pd.to_datetime(df_equity["date"])
+sector_name = st.session_state.get("sector", "")
+has_sector_data = (not df_sector.empty
+                   and "sector" in df_sector.columns
+                   and sector_name in set(df_sector["sector"]))
+
+if has_sector_data:
+    scope = st.radio("Scope", ["Whole portfolio", "Selected sector only"],
+                     horizontal=True, key="whatif_scope")
+else:
+    scope = "Whole portfolio"
+    st.caption(
+        "Per-sector curves are not in the data yet. Run Section 10 of "
+        "C_strategy_engine.ipynb to generate equity_curves_by_sector.csv."
+    )
+
+if scope == "Selected sector only" and has_sector_data:
+    sub = df_sector[df_sector["sector"] == sector_name].copy()
+    sub["date"] = pd.to_datetime(sub["date"])
+    df_equity = sub.pivot_table(index="date", columns="strategy",
+                                values="value", aggfunc="last").reset_index()
+    df_equity = df_equity.rename(columns={"S&P 500 (SPY)": "S&P_500_SPY",
+                                          "Buy & Hold": "Buy_&_Hold",
+                                          "Position Trader": "Position_Trader",
+                                          "Sector Rotation": "Sector_Rotation"})
+    st.caption("Backtested using only the tickers in " + sector_name + ".")
+else:
+    df_equity["date"] = pd.to_datetime(df_equity["date"])
 if not df_trades.empty and "entry_date" in df_trades.columns:
     df_trades["entry_date"] = pd.to_datetime(df_trades["entry_date"])
 
@@ -35,8 +63,8 @@ st.markdown("Enter a starting investment amount to see how each strategy would h
 starting_amount = st.number_input("Starting Investment ($)", min_value=100, max_value=10000000, value=10000, step=1000)
 
 SHOW_COLS  = ["S&P_500_SPY", "Buy_&_Hold", "Sector_Rotation", "Position_Trader"]
-COL_COLORS = {"S&P_500_SPY": "#f39c12", "Buy_&_Hold": "#1a1a2e", "Sector_Rotation": "#e74c3c", "Position_Trader": "#8e44ad"}
-COL_LABELS = {"S&P_500_SPY": "S&P 500 (SPY)", "Buy_&_Hold": "Buy & Hold", "Sector_Rotation": "Sector Rotation", "Position_Trader": "Position Trader"}
+COL_COLORS = STRAT_COLORS
+COL_LABELS = STRAT_LABELS
 
 eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)].copy()
 
@@ -47,12 +75,7 @@ name_variants = {
     "Sector Rotation" : ["Sector_Rotation", "sector_rotation"],
     "Position Trader" : ["Position_Trader", "position_trader"],
 }
-color_map = {
-    "S&P 500 (SPY)"   : "#f39c12",
-    "Buy & Hold"      : "#1a1a2e",
-    "Sector Rotation" : "#e74c3c",
-    "Position Trader" : "#8e44ad",
-}
+color_map = {v: STRAT_COLORS.get(k, MUTED) for k, v in STRAT_LABELS.items()}
 eq_cols = [c for c in df_equity.columns if c != "date"]
 col_to_label = {}
 for label, variants in name_variants.items():
@@ -97,19 +120,19 @@ for (col_name, data), mcol in zip(results.items(), mcols):
                 gain_str + " ({:+.1f}%)".format(data["return_pct"]))
 
 # Equity curve
-fig, ax = plt.subplots(figsize=(14, 6), facecolor="white")
+fig, ax = plt.subplots(figsize=(14, 6), facecolor=CANVAS)
 for col_name, data in results.items():
-    raw_color = color_map.get(data["label"], "#888888")
+    raw_color = color_map.get(data["label"], MUTED)
     ls = "--" if "SPY" in col_name or "S&P" in data["label"] else "-"
     lw = 2.5 if data["label"] in ("Sector Rotation", "Buy & Hold", "S&P 500 (SPY)") else 1.8
     ax.plot(data["series"].index, data["series"].values, color=raw_color, linestyle=ls,
             linewidth=lw, label=data["label"] + ": $" + "{:,.0f}".format(data["final"]), alpha=0.9)
-ax.axhline(starting_amount, color="#aaaaaa", linewidth=1, linestyle=":", label="Starting amount")
+ax.axhline(starting_amount, color=AXIS, linewidth=1, linestyle=":", label="Starting amount")
 ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
 ax.set_title("What If You Had Invested $" + "{:,.0f}".format(starting_amount) + "?")
 ax.legend(loc="upper left")
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-ax.set_facecolor("white")
+ax.set_facecolor(CANVAS)
 plt.tight_layout()
 st.pyplot(fig)
 plt.close()
@@ -119,18 +142,20 @@ st.markdown("---")
 st.subheader("Good vs Bad Trades Over Time")
 if not df_trades.empty and "entry_date" in df_trades.columns and "return_pct" in df_trades.columns:
     t = df_trades[(df_trades["entry_date"] >= start) & (df_trades["entry_date"] <= end)].copy()
+    if scope == "Selected sector only" and "ticker" in t.columns:
+        t = t[t["ticker"].isin(selected)]
     if not t.empty:
         wins   = t[t["return_pct"] >  0]
         losses = t[t["return_pct"] <= 0]
-        fig2, ax2 = plt.subplots(figsize=(14, 5), facecolor="white")
-        ax2.bar(wins["entry_date"],   wins["return_pct"],   color="#27ae60", alpha=0.8, width=5, label="Winning trade")
-        ax2.bar(losses["entry_date"], losses["return_pct"], color="#e74c3c", alpha=0.8, width=5, label="Losing trade")
-        ax2.axhline(0, color="#aaaaaa", linewidth=0.8)
+        fig2, ax2 = plt.subplots(figsize=(14, 5), facecolor=CANVAS)
+        ax2.bar(wins["entry_date"],   wins["return_pct"],   color=WIN, alpha=0.85, width=5, label="Winning trade")
+        ax2.bar(losses["entry_date"], losses["return_pct"], color=LOSS, alpha=0.85, width=5, label="Losing trade")
+        ax2.axhline(0, color=AXIS, linewidth=0.8)
         ax2.set_ylabel("Trade Return (%)")
         ax2.set_title("Individual Trades Over Time (green = win, red = loss)")
         ax2.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
         ax2.legend(loc="upper left")
-        ax2.set_facecolor("white")
+        ax2.set_facecolor(CANVAS)
         plt.tight_layout()
         st.pyplot(fig2)
         plt.close()

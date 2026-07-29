@@ -7,7 +7,8 @@ import matplotlib.ticker as mticker
 import matplotlib.patches as mpatches
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style
+from utils import (load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style,
+                   INK, AXIS, MUTED, GRID, CANVAS, POS_FILL, NEG_FILL, STRAT_COLORS, STRAT_LABELS, STRAT_NEUTRAL)
 
 st.header("Strategies")
 
@@ -24,21 +25,50 @@ st.markdown("---")
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
-df_equity = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
-df_trades = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
+df_equity  = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
+df_trades  = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
+df_sector  = load_csv(STRAT_PREFIX + "/equity_curves_by_sector.csv", token)
 
-if df_equity.empty:
+if df_equity.empty and df_sector.empty:
     st.warning("No strategy data. Run C_strategy_engine.ipynb first.")
     st.stop()
 
-df_equity["date"] = pd.to_datetime(df_equity["date"])
+sector_name = st.session_state.get("sector", "")
+has_sector_data = (not df_sector.empty
+                   and "sector" in df_sector.columns
+                   and sector_name in set(df_sector["sector"]))
+
+if has_sector_data:
+    scope = st.radio("Scope", ["Whole portfolio", "Selected sector only"],
+                     horizontal=True, key="strat_scope")
+else:
+    scope = "Whole portfolio"
+    st.caption(
+        "Per-sector curves are not in the data yet. Run Section 10 of "
+        "C_strategy_engine.ipynb to generate equity_curves_by_sector.csv, "
+        "and the sector filter will apply to these charts."
+    )
+
+if scope == "Selected sector only" and has_sector_data:
+    sub = df_sector[df_sector["sector"] == sector_name].copy()
+    sub["date"] = pd.to_datetime(sub["date"])
+    df_equity = sub.pivot_table(index="date", columns="strategy",
+                                values="value", aggfunc="last").reset_index()
+    rename_map = {"S&P 500 (SPY)": "S&P_500_SPY",
+                  "Buy & Hold": "Buy_&_Hold",
+                  "Position Trader": "Position_Trader",
+                  "Sector Rotation": "Sector_Rotation"}
+    df_equity = df_equity.rename(columns=rename_map)
+    st.caption("Backtested using only the tickers in " + sector_name + ".")
+else:
+    df_equity["date"] = pd.to_datetime(df_equity["date"])
 
 # Column names exactly as written by C_strategy_engine
 STRATEGIES = [
-    ("S&P_500_SPY",     "S&P 500 (SPY)",   "#f39c12", "--", 2.2),
-    ("Buy_&_Hold",      "Buy & Hold",      "#1a1a2e", "-",  2.2),
-    ("Sector_Rotation", "Sector Rotation", "#e74c3c", "-",  2.5),
-    ("Position_Trader", "Position Trader", "#8e44ad", "-",  1.8),
+    ("S&P_500_SPY",     "S&P 500 (SPY)",   MARKER_EVENT, "--", 2.2),
+    ("Buy_&_Hold",      "Buy & Hold",      STRAT_COLORS["Buy_&_Hold"],      "-",  2.0),
+    ("Sector_Rotation", "Sector Rotation", NEG, "-",  2.5),
+    ("Position_Trader", "Position Trader", MARKER_SIGNAL, "-",  1.8),
 ]
 STRATEGIES = [s for s in STRATEGIES if s[0] in df_equity.columns]
 
@@ -61,18 +91,13 @@ for (col, label, color, ls, lw), mcol in zip(STRATEGIES, mcols):
     ret   = (final / s0 - 1) * 100 if s0 else 0
     mcol.metric(label, "$" + "{:,.0f}".format(final), "{:+.1f}%".format(ret))
 
-st.caption(
-    "The chart below is portfolio-level: each strategy allocates across the whole universe, "
-    "so the sector filter does not apply to it. Use the trade log lower down to view trades "
-    "for the selected sector."
-)
 st.markdown("---")
 
 def quarter_fmt(x, _pos=None):
     d = mdates.num2date(x)
     return str(d.year) + " Q" + str((d.month - 1) // 3 + 1)
 
-fig, axes = plt.subplots(2, 1, figsize=(14, 12), facecolor="white", dpi=100,
+fig, axes = plt.subplots(2, 1, figsize=(14, 12), facecolor=CANVAS, dpi=100,
                          gridspec_kw={"height_ratios": [3, 1]})
 ax = axes[0]
 
@@ -91,10 +116,10 @@ if spy_series is not None and "Sector_Rotation" in aligned.columns:
     spy_a = spy_series.reindex(rot_s.index).ffill()
     ok = rot_s.notna() & spy_a.notna()
     ax.fill_between(rot_s.index[ok], spy_a[ok], rot_s[ok],
-                    where=rot_s[ok] >= spy_a[ok], color="#a9dfbf", alpha=0.20,
+                    where=rot_s[ok] >= spy_a[ok], color=POS_FILL, alpha=0.20,
                     label="Rotation ahead of SPY")
     ax.fill_between(rot_s.index[ok], spy_a[ok], rot_s[ok],
-                    where=rot_s[ok] < spy_a[ok], color="#f5b7b1", alpha=0.20,
+                    where=rot_s[ok] < spy_a[ok], color=NEG_FILL, alpha=0.20,
                     label="SPY ahead of Rotation")
 
 ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
@@ -102,7 +127,7 @@ ax.set_title("Portfolio Growth - All Strategies vs S&P 500")
 ax.legend(loc="upper left")
 ax.xaxis.set_major_locator(mdates.YearLocator())
 ax.xaxis.set_major_formatter(mticker.FuncFormatter(quarter_fmt))
-ax.set_facecolor("white")
+ax.set_facecolor(CANVAS)
 
 # Leading strategy each month, gray when every strategy lost money
 ax2 = axes[1]
@@ -113,21 +138,21 @@ if not monthly.empty:
     color_for  = {s[0]: s[2] for s in STRATEGIES}
     winners = monthly.idxmax(axis=1)
     for i, (month, winner) in enumerate(winners.items()):
-        color = color_for.get(winner, "#cccccc")
+        color = color_for.get(winner, GRID)
         if i > 0 and month in monthly_ret.index:
             rets = monthly_ret.loc[month].dropna()
             if len(rets) > 0 and (rets < 0).all():
-                color = "#aaaaaa"
+                color = AXIS
         ax2.bar(month, 1, width=20, color=color, alpha=0.9)
     ax2.set_yticks([])
     ax2.set_ylabel("Leader")
     ax2.set_title("Leading Strategy Each Month (gray = every strategy lost money)")
     patches = [mpatches.Patch(color=c, label=l) for _, l, c, _, _ in STRATEGIES]
-    patches.append(mpatches.Patch(color="#aaaaaa", label="All lost"))
+    patches.append(mpatches.Patch(color=AXIS, label="All lost"))
     ax2.legend(handles=patches, loc="upper left", ncol=5)
     ax2.xaxis.set_major_locator(mdates.YearLocator())
     ax2.xaxis.set_major_formatter(mticker.FuncFormatter(quarter_fmt))
-    ax2.set_facecolor("white")
+    ax2.set_facecolor(CANVAS)
 
 plt.tight_layout()
 st.pyplot(fig)
@@ -135,24 +160,17 @@ plt.close(fig)
 
 if not df_trades.empty and "strategy" in df_trades.columns:
     st.markdown("---")
-    st.subheader("Trade Log")
+    st.subheader("Position Trade Log")
 
-    # Build the filter from the values actually present, excluding the
-    # optimal-stopping variants which are not shown on this page.
-    present = [s for s in df_trades["strategy"].dropna().unique()
-               if not str(s).lower().startswith("opt stop")]
-    present = sorted(present)
+    # Sector Rotation reallocates weekly rather than opening discrete positions,
+    # and the optimal-stopping variants are not shown on this page, so Position
+    # Trader is the only strategy with individual trades to list.
+    t = df_trades[df_trades["strategy"].astype(str).str.strip() == "Position Trader"].copy()
 
-    if not present:
-        st.info("No individual trades recorded for the strategies shown on this page.")
+    if t.empty:
+        st.info("No Position Trader trades recorded.")
     else:
-        fcol1, fcol2 = st.columns([2, 1])
-        with fcol1:
-            chosen = st.multiselect("Filter by Strategy", options=present, default=present)
-        with fcol2:
-            sector_only = st.checkbox("Selected sector only", value=False)
-
-        t = df_trades[df_trades["strategy"].isin(chosen)].copy() if chosen else df_trades.iloc[0:0].copy()
+        sector_only = st.checkbox("Selected sector only", value=False)
         if sector_only and "ticker" in t.columns:
             t = t[t["ticker"].isin(selected)]
 
@@ -170,22 +188,22 @@ if not df_trades.empty and "strategy" in df_trades.columns:
 
         if total_t:
             col_map = {
-                "ticker": "Ticker", "strategy": "Strategy",
+                "ticker": "Ticker",
                 "entry_date": "Entry Date", "exit_date": "Exit Date",
                 "entry_price": "Entry Price", "exit_price": "Exit Price",
                 "return_pct": "Return %", "portfolio_val": "Portfolio Value",
                 "trigger_source": "Trigger Source",
             }
-            keep = [c for c in col_map if c in t.columns]
+            keep = [x for x in col_map if x in t.columns]
             disp = t[keep].rename(columns=col_map)
             disp = disp.sort_values("Entry Date", ascending=False)
             if "Entry Date" in disp.columns:
                 disp["Entry Date"] = pd.to_datetime(disp["Entry Date"]).dt.strftime("%Y-%m-%d")
             if "Exit Date" in disp.columns:
                 disp["Exit Date"] = pd.to_datetime(disp["Exit Date"]).dt.strftime("%Y-%m-%d")
-            for c in ("Entry Price", "Exit Price"):
-                if c in disp.columns:
-                    disp[c] = disp[c].apply(lambda x: "${:,.2f}".format(x) if pd.notna(x) else "")
+            for cc in ("Entry Price", "Exit Price"):
+                if cc in disp.columns:
+                    disp[cc] = disp[cc].apply(lambda x: "${:,.2f}".format(x) if pd.notna(x) else "")
             if "Portfolio Value" in disp.columns:
                 disp["Portfolio Value"] = disp["Portfolio Value"].apply(
                     lambda x: "${:,.0f}".format(x) if pd.notna(x) else "")
@@ -194,10 +212,10 @@ if not df_trades.empty and "strategy" in df_trades.columns:
                     lambda x: "{:+.2f}%".format(x) if pd.notna(x) else "")
             st.dataframe(disp.reset_index(drop=True), width="stretch", hide_index=True)
         else:
-            st.info("No trades for the selected strategies in this date range.")
+            st.info("No trades in this date range.")
 
-    st.info(
-        "Sector Rotation does not appear in this table. It reallocates across a whole sector "
-        "every week rather than opening and closing discrete positions, so C_strategy_engine "
-        "records it as an equity curve only. Its performance is shown in the chart above."
+    st.caption(
+        "Only Position Trader opens and closes discrete positions. Sector Rotation "
+        "reallocates across a whole sector each week, so it is recorded as an equity "
+        "curve rather than individual trades."
     )

@@ -4,7 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import load_signals, load_price, sidebar_filters, get_sig_col, SENTIMENT_THRESHOLD, apply_chart_style
+from utils import (load_signals, load_price, sidebar_filters, get_sig_col, SENTIMENT_THRESHOLD, apply_chart_style,
+                   POS, NEG, NEU, INK, AXIS, MUTED, GRID, CANVAS, QUAD_TP, QUAD_TN, QUAD_FP, QUAD_FN, TREND)
 
 st.header("Signal Quality")
 
@@ -60,13 +61,13 @@ for _, srow in sig.iterrows():
     xp = price.loc[future[hold_days - 1], "Close"]
     ret = (xp - ep) / ep * 100
     if sv >= SENTIMENT_THRESHOLD and ret > 0:
-        q, c = "True Positive", "#27ae60"
+        q, c = "True Positive", QUAD_TP
     elif sv >= SENTIMENT_THRESHOLD and ret <= 0:
-        q, c = "False Positive", "#e74c3c"
+        q, c = "False Positive", QUAD_FP
     elif sv <= -SENTIMENT_THRESHOLD and ret < 0:
-        q, c = "True Negative", "#2980b9"
+        q, c = "True Negative", QUAD_TN
     else:
-        q, c = "False Negative", "#e67e22"
+        q, c = "False Negative", QUAD_FN
     rows.append({"sent": sv, "ret": ret, "q": q, "c": c,
                  "stories": srow.get("story_count", 1)})
 
@@ -90,28 +91,28 @@ c3.metric("False Positive", str(fp), str(round(fp / total * 100)) + "%")
 c4.metric("True Negative",  str(tn), str(round(tn / total * 100)) + "%")
 c5.metric("False Negative", str(fn), str(round(fn / total * 100)) + "%")
 
-fig, ax = plt.subplots(figsize=(9, 7), facecolor="white", dpi=100)
+fig, ax = plt.subplots(figsize=(9, 7), facecolor=CANVAS, dpi=100)
 ax.scatter(df_plot["sent"], df_plot["ret"], c=df_plot["c"], alpha=0.65,
            s=df_plot["stories"].clip(1, 50) * 8 + 15,
            edgecolors="white", linewidths=0.4, zorder=3)
-ax.axhline(0, color="#888888", linewidth=1)
-ax.axvline(0, color="#888888", linewidth=1)
+ax.axhline(0, color=MUTED, linewidth=1)
+ax.axvline(0, color=MUTED, linewidth=1)
 xmax = float(df_plot["sent"].abs().max()) * 1.1
 ymax = float(df_plot["ret"].abs().max()) * 1.1
 ax.set_xlim(-xmax, xmax)
 ax.set_ylim(-ymax, ymax)
-ax.text( xmax * .55,  ymax * .88, "True Positive\n"  + str(tp) + " (" + str(round(tp/total*100)) + "%)", ha="center", fontsize=13, color="#27ae60", fontweight="bold")
-ax.text(-xmax * .55,  ymax * .88, "False Negative\n" + str(fn) + " (" + str(round(fn/total*100)) + "%)", ha="center", fontsize=13, color="#e67e22", fontweight="bold")
-ax.text( xmax * .55, -ymax * .88, "False Positive\n" + str(fp) + " (" + str(round(fp/total*100)) + "%)", ha="center", fontsize=13, color="#e74c3c", fontweight="bold")
-ax.text(-xmax * .55, -ymax * .88, "True Negative\n"  + str(tn) + " (" + str(round(tn/total*100)) + "%)", ha="center", fontsize=13, color="#2980b9", fontweight="bold")
+ax.text( xmax * .55,  ymax * .88, "True Positive\n"  + str(tp) + " (" + str(round(tp/total*100)) + "%)", ha="center", fontsize=13, color=QUAD_TP, fontweight="bold")
+ax.text(-xmax * .55,  ymax * .88, "False Negative\n" + str(fn) + " (" + str(round(fn/total*100)) + "%)", ha="center", fontsize=13, color=QUAD_FN, fontweight="bold")
+ax.text( xmax * .55, -ymax * .88, "False Positive\n" + str(fp) + " (" + str(round(fp/total*100)) + "%)", ha="center", fontsize=13, color=QUAD_FP, fontweight="bold")
+ax.text(-xmax * .55, -ymax * .88, "True Negative\n"  + str(tn) + " (" + str(round(tn/total*100)) + "%)", ha="center", fontsize=13, color=QUAD_TN, fontweight="bold")
 if len(df_plot) > 5:
     z = np.polyfit(df_plot["sent"], df_plot["ret"], 1)
     xs = np.linspace(-xmax, xmax, 100)
-    ax.plot(xs, np.poly1d(z)(xs), color="#f39c12", linewidth=2, zorder=4)
+    ax.plot(xs, np.poly1d(z)(xs), color=TREND, linewidth=2, zorder=4)
 ax.set_xlabel("Negative Buzz  <--  |  -->  Positive Buzz")
 ax.set_ylabel("Price Change " + str(hold_days) + " Days Later (%)")
 ax.set_title(ticker + " - Signal Quality | Accuracy: " + str(round(acc * 100, 1)) + "% | n=" + str(total))
-ax.set_facecolor("white")
+ax.set_facecolor(CANVAS)
 plt.tight_layout()
 st.pyplot(fig)
 plt.close(fig)

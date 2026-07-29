@@ -27,18 +27,6 @@ SECTOR_MAP = {
     "Enterprise Fintech"   : ["PYPL"],
 }
 
-STRAT_COLORS = {
-    "SP_500_SPY_"     : "#f39c12",
-    "Buy__Hold"       : "#1a1a2e",
-    "Sector_Rotation" : "#e74c3c",
-    "Position_Trader" : "#8e44ad",
-}
-STRAT_LABELS = {
-    "SP_500_SPY_"     : "S&P 500 (SPY)",
-    "Buy__Hold"       : "Buy & Hold",
-    "Sector_Rotation" : "Sector Rotation",
-    "Position_Trader" : "Position Trader",
-}
 
 # Only these columns are ever used by the app. Loading all ~20 columns
 # across 47 quarterly files is what exhausts memory on Streamlit Cloud.
@@ -48,22 +36,35 @@ SIGNAL_COLS = [
 ]
 
 def apply_chart_style():
+    """Matplotlib defaults matching the app theme."""
     mpl.rcParams.update({
-        "figure.facecolor": "white",
-        "axes.facecolor"  : "white",
-        "axes.edgecolor"  : "#cccccc",
-        "axes.grid"       : True,
-        "grid.color"      : "#e8e8e8",
-        "grid.linewidth"  : 0.7,
-        "axes.spines.top" : False,
+        "figure.facecolor" : CANVAS,
+        "axes.facecolor"   : CANVAS,
+        "savefig.facecolor": CANVAS,
+        "axes.edgecolor"   : AXIS,
+        "axes.labelcolor"  : INK,
+        "text.color"       : INK,
+        "xtick.color"      : MUTED,
+        "ytick.color"      : MUTED,
+        "axes.grid"        : True,
+        "axes.axisbelow"   : True,
+        "grid.color"       : GRID,
+        "grid.linewidth"   : 0.8,
+        "axes.spines.top"  : False,
         "axes.spines.right": False,
-        "font.size"       : 14,
-        "axes.titlesize"  : 16,
-        "axes.labelsize"  : 14,
-        "xtick.labelsize" : 12,
-        "ytick.labelsize" : 12,
-        "legend.fontsize" : 12,
+        "font.size"        : 14,
+        "axes.titlesize"   : 16,
+        "axes.titleweight" : "bold",
+        "axes.titlecolor"  : INK,
+        "axes.labelsize"   : 14,
+        "xtick.labelsize"  : 12,
+        "ytick.labelsize"  : 12,
+        "legend.fontsize"  : 12,
+        "legend.framealpha": 0.95,
+        "legend.facecolor" : CANVAS,
+        "legend.edgecolor" : GRID,
     })
+
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_csv(path, token=None):
@@ -218,3 +219,87 @@ def load_company_names():
         return names
     except Exception:
         return {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Colour system
+#
+# Built on the Okabe-Ito palette, which is designed to stay distinguishable
+# under deuteranopia and protanopia. Colour carries meaning in three separate
+# roles here, and the roles deliberately do not share hues:
+#
+#   SENTIMENT  diverging   direction is the meaning (blue up / orange down)
+#   STRATEGY   categorical colour is only a label; benchmarks are muted grey
+#              so the two signal-driven strategies carry the saturated hues
+#   QUADRANT   cool = the prediction was right, warm = it was wrong
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Canvas
+INK          = "#22262E"   # primary text and the rolling-average line
+MUTED        = "#6B7280"   # secondary text
+GRID         = "#E4E7EC"   # gridlines
+AXIS         = "#C7CCD6"   # zero lines and axis spines
+CANVAS       = "#FBFBFD"   # figure and axes background
+
+# Sentiment, diverging
+POS          = "#0072B2"   # positive sentiment
+NEG          = "#D55E00"   # negative sentiment
+NEU          = "#AEB4BF"   # inside the neutral threshold
+POS_FILL     = "#CFE3F3"   # light wash under a positive area
+NEG_FILL     = "#F7DDC4"   # light wash under a negative area
+
+# Price and event markers
+PRICE        = "#4A4E57"   # price line, kept neutral so it never reads as sentiment
+MARKER_EVENT = "#B8860B"   # the big price move
+MARKER_SIGNAL= "#7B2D8E"   # when sentiment fired
+TREND        = "#7B2D8E"   # regression line
+
+# Strategies, categorical
+STRAT_COLORS = {
+    "S&P_500_SPY"     : "#9AA4B2",   # benchmark, muted on purpose
+    "Buy_&_Hold"      : "#4A4E57",   # benchmark, muted on purpose
+    "Sector_Rotation" : "#CC79A7",   # signal-driven, saturated
+    "Position_Trader" : "#009E73",   # signal-driven, saturated
+}
+STRAT_LABELS = {
+    "S&P_500_SPY"     : "S&P 500 (SPY)",
+    "Buy_&_Hold"      : "Buy & Hold",
+    "Sector_Rotation" : "Sector Rotation",
+    "Position_Trader" : "Position Trader",
+}
+STRAT_NEUTRAL = "#AEB4BF"   # months where every strategy lost
+
+# Signal quality quadrants: cool = correct, warm = incorrect
+QUAD_TP = "#0072B2"   # positive buzz, price rose
+QUAD_TN = "#009E73"   # negative buzz, price fell
+QUAD_FP = "#D55E00"   # positive buzz, price fell
+QUAD_FN = "#CC79A7"   # negative buzz, price rose
+
+# Outcome states
+WIN  = POS
+LOSS = NEG
+
+# Data sources, grouped by family so related feeds read as related
+SOURCE_COLORS = {
+    "gdelt"                   : "#0072B2",
+    "hn"                      : "#E69F00",
+    "stocktwits"              : "#009E73",
+    "edgar_8k"                : "#7B2D8E",
+    "reddit_wallstreetbets"   : "#CC79A7",
+    "reddit_stocks"           : "#B05C86",
+    "reddit_investing"        : "#8E4A6B",
+    "reddit_technology"       : "#6D3A53",
+    "reddit_SecurityAnalysis" : "#4F2A3C",
+}
+
+def sentiment_color(value, threshold=SENTIMENT_THRESHOLD):
+    """Colour for a single sentiment score."""
+    if value >= threshold:
+        return POS
+    if value <= -threshold:
+        return NEG
+    return NEU
+
+def sentiment_colors(values, threshold=SENTIMENT_THRESHOLD):
+    """Colour list for a sequence of sentiment scores."""
+    return [sentiment_color(v, threshold) for v in values]
