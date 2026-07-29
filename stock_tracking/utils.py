@@ -4,7 +4,8 @@ import requests
 import io
 import streamlit as st
 from datetime import datetime
-import matplotlib as mpl
+import plotly.graph_objects as go
+import plotly.io as pio
 
 GITHUB_REPO   = "annhmartin/dataviz-historical-stocks-AnnetteMartin"
 FOLDER        = "stock_tracking"
@@ -34,36 +35,6 @@ SIGNAL_COLS = [
     "ticker", "date", "norm_sentiment", "adaptive_sentiment",
     "story_count", "sources_active",
 ]
-
-def apply_chart_style():
-    """Matplotlib defaults matching the app theme."""
-    mpl.rcParams.update({
-        "figure.facecolor" : CANVAS,
-        "axes.facecolor"   : CANVAS,
-        "savefig.facecolor": CANVAS,
-        "axes.edgecolor"   : AXIS,
-        "axes.labelcolor"  : INK,
-        "text.color"       : INK,
-        "xtick.color"      : MUTED,
-        "ytick.color"      : MUTED,
-        "axes.grid"        : True,
-        "axes.axisbelow"   : True,
-        "grid.color"       : GRID,
-        "grid.linewidth"   : 0.8,
-        "axes.spines.top"  : False,
-        "axes.spines.right": False,
-        "font.size"        : 14,
-        "axes.titlesize"   : 16,
-        "axes.titleweight" : "bold",
-        "axes.titlecolor"  : INK,
-        "axes.labelsize"   : 14,
-        "xtick.labelsize"  : 12,
-        "ytick.labelsize"  : 12,
-        "legend.fontsize"  : 12,
-        "legend.framealpha": 0.95,
-        "legend.facecolor" : CANVAS,
-        "legend.edgecolor" : GRID,
-    })
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -117,13 +88,23 @@ def load_signals(token=None, tickers=None, start_year=2015, end_year=None):
     """
     Load sentiment signals.
 
-    Only the columns in SIGNAL_COLS are read, and if `tickers` is given only
-    those rows are kept. This keeps memory well under the Streamlit Cloud
-    limit instead of materialising all ~9M rows at once.
+    Prefers dashboard_signals.csv, a single pre-filtered file written by
+    section 7 of A_sentiment_engine. Falls back to reading the quarterly files
+    one by one if that bundle has not been generated yet.
     """
     if end_year is None:
         end_year = datetime.now().year
     tickers = tuple(tickers) if tickers else None
+
+    bundle = load_csv(OUTPUT_PREFIX + "/dashboard_signals.csv", token)
+    if not bundle.empty:
+        bundle["date"] = pd.to_datetime(bundle["date"])
+        if tickers:
+            bundle = bundle[bundle["ticker"].isin(tickers)]
+        bundle = bundle[(bundle["date"].dt.year >= start_year)
+                        & (bundle["date"].dt.year <= end_year)]
+        if not bundle.empty:
+            return bundle.reset_index(drop=True)
 
     frames = []
     for year in range(start_year, end_year + 1):
@@ -175,6 +156,8 @@ def sidebar_filters():
         options=list(SECTOR_MAP.keys()),
         index=list(SECTOR_MAP.keys()).index(st.session_state["sector"]),
         key="sector_radio",
+        help="Chooses which group of tickers every chart is built from. "
+             "Your choice carries across all pages.",
     )
     st.session_state["sector"] = sector
     selected = list(SECTOR_MAP[sector])
@@ -185,6 +168,8 @@ def sidebar_filters():
         min_value=pd.Timestamp("2015-01-01").date(),
         max_value=pd.Timestamp.today().date(),
         key="date_range_input",
+        help="Limits every chart to this window. A shorter range loads faster "
+             "because fewer quarterly files are read.",
     )
     if len(date_range) == 2:
         st.session_state["start_date"] = date_range[0]
@@ -192,6 +177,21 @@ def sidebar_filters():
 
     start = pd.Timestamp(st.session_state["start_date"])
     end   = pd.Timestamp(st.session_state["end_date"])
+
+    st.sidebar.markdown("---")
+    st.sidebar.caption("**Tickers in view**")
+    st.sidebar.caption(", ".join(selected) if selected else "none")
+
+    latest, days_old = data_freshness(token)
+    if latest is not None:
+        if days_old is not None and days_old > 7:
+            st.sidebar.warning(
+                f"Data last updated {latest} ({days_old} days ago). "
+                "Run incremental_updater.ipynb to refresh."
+            )
+        else:
+            st.sidebar.caption(f"Data current to {latest}")
+
     return selected, start, end, token
 
 
@@ -303,3 +303,73 @@ def sentiment_color(value, threshold=SENTIMENT_THRESHOLD):
 def sentiment_colors(values, threshold=SENTIMENT_THRESHOLD):
     """Colour list for a sequence of sentiment scores."""
     return [sentiment_color(v, threshold) for v in values]
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def data_freshness(token=None):
+    """
+    How current the underlying data is. Returns (label, days_old) so the sidebar
+    can warn when the dashboard is showing stale numbers.
+    """
+    try:
+        df = load_csv(STOCKS_PREFIX + "/prices_SPY.csv", token)
+        if df.empty or "Date" not in df.columns:
+            return None, None
+        latest = pd.to_datetime(df["Date"], errors="coerce").max()
+        if pd.isna(latest):
+            return None, None
+        days = (pd.Timestamp.today().normalize() - latest.normalize()).days
+        return latest.strftime("%d %b %Y"), int(days)
+    except Exception:
+        return None, None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Plotly presentation layer
+# ─────────────────────────────────────────────────────────────────────────────
+
+CONTEXT  = "#BFC5CF"   # muted grey for anything not being emphasised
+ACCENT   = "#009E73"
+HIGHLIGHT= "#CC79A7"
+GOLD     = "#E69F00"
+
+_TEMPLATE_NAME = "techpulse"
+
+def apply_chart_style():
+    """Register and activate the shared Plotly template."""
+    pio.templates[_TEMPLATE_NAME] = go.layout.Template(
+        layout=go.Layout(
+            font=dict(family="Helvetica Neue, Helvetica, Arial, sans-serif",
+                      size=14, color=INK),
+            title=dict(font=dict(size=19, color=INK), x=0.01, xanchor="left",
+                       y=0.96, yanchor="top"),
+            paper_bgcolor=CANVAS, plot_bgcolor=CANVAS,
+            xaxis=dict(showgrid=False, zeroline=False, showline=True,
+                       linecolor=GRID, linewidth=1, ticks="outside",
+                       tickcolor=GRID, ticklen=5,
+                       tickfont=dict(color=MUTED, size=12),
+                       title=dict(font=dict(size=13, color=MUTED))),
+            yaxis=dict(showgrid=True, gridcolor=GRID, gridwidth=1, zeroline=False,
+                       showline=False, tickfont=dict(color=MUTED, size=12),
+                       title=dict(font=dict(size=13, color=MUTED))),
+            legend=dict(bgcolor="rgba(0,0,0,0)", borderwidth=0,
+                        font=dict(size=12, color=INK)),
+            margin=dict(l=70, r=40, t=95, b=60),
+            hoverlabel=dict(bgcolor="white", font_size=13, bordercolor=GRID),
+            colorway=[POS, NEG, ACCENT, HIGHLIGHT, GOLD, MUTED],
+        )
+    )
+    pio.templates.default = _TEMPLATE_NAME
+
+def titled(fig, takeaway, subtitle=None, height=520):
+    """Title states the finding; subtitle carries the mechanics."""
+    text = f"<b>{takeaway}</b>"
+    if subtitle:
+        text += f"<br><span style='font-size:12px;color:{MUTED}'>{subtitle}</span>"
+    fig.update_layout(title=dict(text=text), height=height)
+    return fig
+
+def show(fig):
+    """Render a figure full width with the modebar kept minimal."""
+    st.plotly_chart(fig, use_container_width=True,
+                    config={"displayModeBar": False, "displaylogo": False})

@@ -1,20 +1,16 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import matplotlib.dates as mdates
+import plotly.graph_objects as go
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import (load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style,
-                   INK, AXIS, MUTED, GRID, CANVAS, WIN, LOSS, STRAT_COLORS, STRAT_LABELS)
+                   titled, show, POS, NEG, ACCENT, HIGHLIGHT, CONTEXT, MUTED, INK)
 
 st.header("What If")
 
-token = None
-try: token = st.secrets["GITHUB_TOKEN"]
-except Exception: pass
+selected, start, end, token = sidebar_filters()
+apply_chart_style()
 
 df_equity = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
 df_trades = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
@@ -24,162 +20,151 @@ if df_equity.empty and df_sector.empty:
     st.warning("No strategy data. Run C_strategy_engine.ipynb first.")
     st.stop()
 
+st.markdown("Put in an amount and see how each strategy would have handled it over the "
+            "date range set in the sidebar.")
+
 sector_name = st.session_state.get("sector", "")
-has_sector_data = (not df_sector.empty
-                   and "sector" in df_sector.columns
-                   and sector_name in set(df_sector["sector"]))
+has_sector = (not df_sector.empty and "sector" in df_sector.columns
+              and sector_name in set(df_sector["sector"]))
 
-if has_sector_data:
-    scope = st.radio("Scope", ["Whole portfolio", "Selected sector only"],
-                     horizontal=True, key="whatif_scope")
-else:
-    scope = "Whole portfolio"
-    st.caption(
-        "Per-sector curves are not in the data yet. Run Section 10 of "
-        "C_strategy_engine.ipynb to generate equity_curves_by_sector.csv."
-    )
+c1, c2 = st.columns([1, 1])
+with c1:
+    amount = st.number_input("Starting investment ($)", min_value=100,
+                             max_value=10_000_000, value=10_000, step=1000,
+                             help="Every curve is rescaled to this starting amount "
+                                  "across the sidebar date range.")
+with c2:
+    if has_sector:
+        scope = st.radio("Scope", ["Whole portfolio", "Selected sector only"],
+                         horizontal=True, key="whatif_scope")
+    else:
+        scope = "Whole portfolio"
 
-if scope == "Selected sector only" and has_sector_data:
+if scope == "Selected sector only" and has_sector:
     sub = df_sector[df_sector["sector"] == sector_name].copy()
     sub["date"] = pd.to_datetime(sub["date"])
     df_equity = sub.pivot_table(index="date", columns="strategy",
                                 values="value", aggfunc="last").reset_index()
-    df_equity = df_equity.rename(columns={"S&P 500 (SPY)": "S&P_500_SPY",
-                                          "Buy & Hold": "Buy_&_Hold",
-                                          "Position Trader": "Position_Trader",
-                                          "Sector Rotation": "Sector_Rotation"})
-    st.caption("Backtested using only the tickers in " + sector_name + ".")
+    df_equity = df_equity.rename(columns={
+        "S&P 500 (SPY)": "S&P_500_SPY", "Buy & Hold": "Buy_&_Hold",
+        "Position Trader": "Position_Trader", "Sector Rotation": "Sector_Rotation"})
 else:
     df_equity["date"] = pd.to_datetime(df_equity["date"])
-if not df_trades.empty and "entry_date" in df_trades.columns:
-    df_trades["entry_date"] = pd.to_datetime(df_trades["entry_date"])
 
-# Date range comes from sidebar only
-selected, start, end, token = sidebar_filters()
-apply_chart_style()
-
-st.markdown("Enter a starting investment amount to see how each strategy would have performed. Date range is controlled by the sidebar.")
-
-starting_amount = st.number_input("Starting Investment ($)", min_value=100, max_value=10000000, value=10000, step=1000)
-
-SHOW_COLS  = ["S&P_500_SPY", "Buy_&_Hold", "Sector_Rotation", "Position_Trader"]
-COL_COLORS = STRAT_COLORS
-COL_LABELS = STRAT_LABELS
-
-eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)].copy()
-
-# Try flexible column name matching
-name_variants = {
-    "S&P 500 (SPY)"   : ["S&P_500_SPY", "SPY", "SP500", "sp_500_spy"],
-    "Buy & Hold"      : ["Buy_&_Hold", "Buy_Hold", "BuyHold", "buy_hold"],
-    "Sector Rotation" : ["Sector_Rotation", "sector_rotation"],
-    "Position Trader" : ["Position_Trader", "position_trader"],
-}
-color_map = {v: STRAT_COLORS.get(k, MUTED) for k, v in STRAT_LABELS.items()}
-eq_cols = [c for c in df_equity.columns if c != "date"]
-col_to_label = {}
-for label, variants in name_variants.items():
-    for v in variants:
-        for actual in eq_cols:
-            if actual.lower() == v.lower() or v.lower() in actual.lower():
-                if actual not in col_to_label:
-                    col_to_label[actual] = label
-strat_cols = list(col_to_label.keys()) or eq_cols
-
-if eq.empty or not strat_cols:
-    st.warning("No data for selected date range.")
+SERIES = [
+    ("S&P_500_SPY",     "S&P 500 (SPY)",   CONTEXT,   "dash",  2.0),
+    ("Buy_&_Hold",      "Buy & Hold",      MUTED,     "solid", 2.0),
+    ("Sector_Rotation", "Sector Rotation", ACCENT,    "solid", 3.2),
+    ("Position_Trader", "Position Trader", HIGHLIGHT, "solid", 2.2),
+]
+SERIES = [s for s in SERIES if s[0] in df_equity.columns]
+eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)]
+if eq.empty or not SERIES:
+    st.warning("No data in this date range.")
     st.stop()
+
+curves = eq.set_index("date").sort_index()[[s[0] for s in SERIES]].ffill().dropna(how="all")
 
 results = {}
-for col_name in strat_cols:
-    if col_name not in eq.columns: continue
-    series = eq.set_index("date")[col_name].dropna()
-    if series.empty: continue
-    s0 = float(series.iloc[0]); final = float(series.iloc[-1])
-    scale = starting_amount / s0 if s0 > 0 else 1.0
-    scaled = series * scale
-    label = col_to_label.get(col_name, col_name)
-    results[col_name] = {
-        "label"     : label,
-        "series"    : scaled,
-        "final"     : float(scaled.iloc[-1]),
-        "gain"      : float(scaled.iloc[-1]) - starting_amount,
-        "return_pct": (final / s0 - 1) * 100 if s0 > 0 else 0,
-    }
+for col, label, colour, dash, width in SERIES:
+    s = curves[col].dropna()
+    if s.empty:
+        continue
+    scaled = s * (amount / float(s.iloc[0]))
+    results[label] = dict(series=scaled, colour=colour, dash=dash, width=width,
+                          final=float(scaled.iloc[-1]),
+                          gain=float(scaled.iloc[-1]) - amount,
+                          pct=(float(s.iloc[-1]) / float(s.iloc[0]) - 1) * 100)
 
 if not results:
-    st.warning("No strategy data for selected date range.")
+    st.warning("No strategy data in this date range.")
     st.stop()
 
-# Metrics
 st.markdown("---")
-mcols = st.columns(len(results))
-for (col_name, data), mcol in zip(results.items(), mcols):
-    gain_str = ("+$" if data["gain"] >= 0 else "-$") + "{:,.0f}".format(abs(data["gain"]))
-    mcol.metric(data["label"], "$" + "{:,.0f}".format(data["final"]),
-                gain_str + " ({:+.1f}%)".format(data["return_pct"]))
+mc = st.columns(len(results))
+for (label, d), box in zip(results.items(), mc):
+    sign = "+" if d["gain"] >= 0 else "−"
+    box.metric(label, f"${d['final']:,.0f}",
+               f"{sign}${abs(d['gain']):,.0f}  ({d['pct']:+.1f}%)")
 
-# Equity curve
-fig, ax = plt.subplots(figsize=(14, 6), facecolor=CANVAS)
-for col_name, data in results.items():
-    raw_color = color_map.get(data["label"], MUTED)
-    ls = "--" if "SPY" in col_name or "S&P" in data["label"] else "-"
-    lw = 2.5 if data["label"] in ("Sector Rotation", "Buy & Hold", "S&P 500 (SPY)") else 1.8
-    ax.plot(data["series"].index, data["series"].values, color=raw_color, linestyle=ls,
-            linewidth=lw, label=data["label"] + ": $" + "{:,.0f}".format(data["final"]), alpha=0.9)
-ax.axhline(starting_amount, color=AXIS, linewidth=1, linestyle=":", label="Starting amount")
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
-ax.set_title("What If You Had Invested $" + "{:,.0f}".format(starting_amount) + "?")
-ax.legend(loc="upper left")
-ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-ax.set_facecolor(CANVAS)
-plt.tight_layout()
-st.pyplot(fig)
-plt.close()
+fig = go.Figure()
+for label, d in results.items():
+    fig.add_trace(go.Scatter(
+        x=d["series"].index, y=d["series"].values, mode="lines", name=label,
+        line=dict(color=d["colour"], width=d["width"], dash=d["dash"]),
+        hovertemplate=f"<b>{label}</b><br>%{{x|%b %Y}}<br>$%{{y:,.0f}}<extra></extra>"))
+    fig.add_annotation(x=d["series"].index[-1], y=d["final"],
+                       text=f"  ${d['final']:,.0f}", showarrow=False, xanchor="left",
+                       font=dict(size=12, color=d["colour"]))
 
-# Good vs bad trades chart
+fig.add_hline(y=amount, line_color=MUTED, line_width=1.5, line_dash="dot")
+fig.add_annotation(x=curves.index[0], y=amount, text=f"started with ${amount:,.0f} ",
+                   showarrow=False, xanchor="left", yshift=-16,
+                   font=dict(size=12, color=MUTED))
+
+fig.update_yaxes(title="Portfolio value", tickprefix="$")
+fig.update_xaxes(title="")
+fig.update_layout(legend=dict(orientation="h", y=1.02, x=0, yanchor="bottom"),
+                  margin=dict(r=140), hovermode="x unified")
+
+best = max(results, key=lambda k: results[k]["final"])
+titled(fig,
+       f"${amount:,.0f} in {best} would have become ${results[best]['final']:,.0f}",
+       f"From {start:%B %Y} to {end:%B %Y}, including transaction costs",
+       height=540)
+show(fig)
+
 st.markdown("---")
-st.subheader("Good vs Bad Trades Over Time")
-if not df_trades.empty and "entry_date" in df_trades.columns and "return_pct" in df_trades.columns:
-    t = df_trades[(df_trades["entry_date"] >= start) & (df_trades["entry_date"] <= end)].copy()
+st.subheader("Every trade, win and loss")
+
+if not df_trades.empty and {"entry_date", "return_pct"} <= set(df_trades.columns):
+    t = df_trades.copy()
+    t["entry_date"] = pd.to_datetime(t["entry_date"])
+    t = t[(t["entry_date"] >= start) & (t["entry_date"] <= end)]
     if scope == "Selected sector only" and "ticker" in t.columns:
         t = t[t["ticker"].isin(selected)]
-    if not t.empty:
-        wins   = t[t["return_pct"] >  0]
-        losses = t[t["return_pct"] <= 0]
-        fig2, ax2 = plt.subplots(figsize=(14, 5), facecolor=CANVAS)
-        ax2.bar(wins["entry_date"],   wins["return_pct"],   color=WIN, alpha=0.85, width=5, label="Winning trade")
-        ax2.bar(losses["entry_date"], losses["return_pct"], color=LOSS, alpha=0.85, width=5, label="Losing trade")
-        ax2.axhline(0, color=AXIS, linewidth=0.8)
-        ax2.set_ylabel("Trade Return (%)")
-        ax2.set_title("Individual Trades Over Time (green = win, red = loss)")
-        ax2.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-        ax2.legend(loc="upper left")
-        ax2.set_facecolor(CANVAS)
-        plt.tight_layout()
-        st.pyplot(fig2)
-        plt.close()
-        w = len(wins); l = len(losses); tot = len(t)
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Trades", str(tot))
-        c2.metric("Wins",   str(w), str(round(w / tot * 100, 1)) + "%" if tot else "")
-        c3.metric("Losses", str(l), str(round(l / tot * 100, 1)) + "%" if tot else "")
-        c4.metric("Avg Return", "{:+.2f}%".format(float(t["return_pct"].mean())))
-    else:
-        st.info("No trades in selected date range.")
-else:
-    st.info("No trade log data available.")
 
-# Summary table
+    if t.empty:
+        st.info("No trades in this date range.")
+    else:
+        wins, losses = t[t.return_pct > 0], t[t.return_pct <= 0]
+        figt = go.Figure()
+        for d, colour, name in [(wins, POS, "Winning trade"), (losses, NEG, "Losing trade")]:
+            if d.empty:
+                continue
+            figt.add_trace(go.Bar(
+                x=d["entry_date"], y=d["return_pct"], name=name,
+                marker_color=colour, marker_line_width=0,
+                customdata=d["ticker"] if "ticker" in d.columns else None,
+                hovertemplate=("%{customdata}<br>%{x|%d %b %Y}"
+                               "<br>return %{y:+.1f}%<extra></extra>")))
+        figt.add_hline(y=0, line_color=MUTED, line_width=1.5)
+        figt.update_yaxes(title="Trade return (%)", tickformat="+.0f")
+        figt.update_xaxes(title="")
+        figt.update_layout(legend=dict(orientation="h", y=1.02, x=0, yanchor="bottom"),
+                           bargap=0.3)
+
+        win_rate = len(wins) / len(t) * 100
+        titled(figt,
+               f"{len(wins)} of {len(t)} trades made money, a {win_rate:.0f}% win rate",
+               f"Average return {t.return_pct.mean():+.2f}% per trade",
+               height=420)
+        show(figt)
+
+        k = st.columns(4)
+        k[0].metric("Trades", f"{len(t)}")
+        k[1].metric("Wins", f"{len(wins)}", f"{win_rate:.0f}%")
+        k[2].metric("Losses", f"{len(losses)}", f"{100-win_rate:.0f}%")
+        k[3].metric("Average", f"{t.return_pct.mean():+.2f}%")
+else:
+    st.info("No trade log available.")
+
 st.markdown("---")
-st.subheader("Summary")
-summary_rows = []
-for col_name, data in results.items():
-    summary_rows.append({
-        "Strategy"       : data["label"],
-        "Starting Amount": "$" + "{:,.0f}".format(starting_amount),
-        "Final Value"    : "$" + "{:,.0f}".format(data["final"]),
-        "Total Gain/Loss": ("+$" if data["gain"] >= 0 else "-$") + "{:,.0f}".format(abs(data["gain"])),
-        "Total Return"   : "{:+.1f}%".format(data["return_pct"]),
-    })
-st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+summary = pd.DataFrame([{
+    "Strategy": label,
+    "Started with": f"${amount:,.0f}",
+    "Ended with": f"${d['final']:,.0f}",
+    "Gain or loss": ("+" if d["gain"] >= 0 else "−") + f"${abs(d['gain']):,.0f}",
+    "Total return": f"{d['pct']:+.1f}%",
+} for label, d in sorted(results.items(), key=lambda x: -x[1]["final"])])
+st.dataframe(summary, width="stretch", hide_index=True)

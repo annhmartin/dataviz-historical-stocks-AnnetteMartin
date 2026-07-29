@@ -1,221 +1,194 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import matplotlib.ticker as mticker
-import matplotlib.patches as mpatches
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils import (load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style,
-                   INK, AXIS, MUTED, GRID, CANVAS, POS_FILL, NEG_FILL, STRAT_COLORS, STRAT_LABELS, STRAT_NEUTRAL)
+                   titled, show, POS, NEG, ACCENT, HIGHLIGHT, CONTEXT, MUTED, INK)
 
 st.header("Strategies")
-
-st.markdown(
-    "**S&P 500 (SPY)** - Passive benchmark. Money sits in the SPY ETF from day one and is never touched.\n\n"
-    "**Buy & Hold** - Equal weight across all tickers, held start to end with no changes.\n\n"
-    "**Sector Rotation** - Each week sentiment picks the sector with the strongest buzz, and money "
-    "rotates into that sector weighted by each company's share of the sentiment.\n\n"
-    "**Position Trader** - Waits for a high-conviction sentiment signal, then holds for 21 trading days. "
-    "Money sits in sector rotation between positions."
-)
-st.markdown("---")
 
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
 
-df_equity  = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
-df_trades  = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
-df_sector  = load_csv(STRAT_PREFIX + "/equity_curves_by_sector.csv", token)
+st.markdown(
+    "**S&P 500 (SPY)** — passive benchmark, never touched. &nbsp;"
+    "**Buy & Hold** — equal weight across all tickers.<br>"
+    "**Sector Rotation** — weekly rotation into the sector with the strongest buzz. &nbsp;"
+    "**Position Trader** — 21-day holds on high-conviction signals.",
+    unsafe_allow_html=True)
+st.markdown("---")
+
+df_equity = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
+df_trades = load_csv(STRAT_PREFIX + "/trade_log.csv", token)
+df_sector = load_csv(STRAT_PREFIX + "/equity_curves_by_sector.csv", token)
 
 if df_equity.empty and df_sector.empty:
     st.warning("No strategy data. Run C_strategy_engine.ipynb first.")
     st.stop()
 
 sector_name = st.session_state.get("sector", "")
-has_sector_data = (not df_sector.empty
-                   and "sector" in df_sector.columns
-                   and sector_name in set(df_sector["sector"]))
+has_sector = (not df_sector.empty and "sector" in df_sector.columns
+              and sector_name in set(df_sector["sector"]))
 
-if has_sector_data:
+if has_sector:
     scope = st.radio("Scope", ["Whole portfolio", "Selected sector only"],
                      horizontal=True, key="strat_scope")
 else:
     scope = "Whole portfolio"
-    st.caption(
-        "Per-sector curves are not in the data yet. Run Section 10 of "
-        "C_strategy_engine.ipynb to generate equity_curves_by_sector.csv, "
-        "and the sector filter will apply to these charts."
-    )
+    st.caption("Per-sector curves are not in the data yet. Run section 10 of "
+               "C_strategy_engine.ipynb to enable the sector view.")
 
-if scope == "Selected sector only" and has_sector_data:
+if scope == "Selected sector only" and has_sector:
     sub = df_sector[df_sector["sector"] == sector_name].copy()
     sub["date"] = pd.to_datetime(sub["date"])
     df_equity = sub.pivot_table(index="date", columns="strategy",
                                 values="value", aggfunc="last").reset_index()
-    rename_map = {"S&P 500 (SPY)": "S&P_500_SPY",
-                  "Buy & Hold": "Buy_&_Hold",
-                  "Position Trader": "Position_Trader",
-                  "Sector Rotation": "Sector_Rotation"}
-    df_equity = df_equity.rename(columns=rename_map)
-    st.caption("Backtested using only the tickers in " + sector_name + ".")
+    df_equity = df_equity.rename(columns={
+        "S&P 500 (SPY)": "S&P_500_SPY", "Buy & Hold": "Buy_&_Hold",
+        "Position Trader": "Position_Trader", "Sector Rotation": "Sector_Rotation"})
 else:
     df_equity["date"] = pd.to_datetime(df_equity["date"])
 
-# Column names exactly as written by C_strategy_engine
-STRATEGIES = [
-    ("S&P_500_SPY",     "S&P 500 (SPY)",   MARKER_EVENT, "--", 2.2),
-    ("Buy_&_Hold",      "Buy & Hold",      STRAT_COLORS["Buy_&_Hold"],      "-",  2.0),
-    ("Sector_Rotation", "Sector Rotation", NEG, "-",  2.5),
-    ("Position_Trader", "Position Trader", MARKER_SIGNAL, "-",  1.8),
+SERIES = [
+    ("S&P_500_SPY",     "S&P 500 (SPY)",   CONTEXT,   "dash",  2.0),
+    ("Buy_&_Hold",      "Buy & Hold",      MUTED,     "solid", 2.0),
+    ("Sector_Rotation", "Sector Rotation", ACCENT,    "solid", 3.2),
+    ("Position_Trader", "Position Trader", HIGHLIGHT, "solid", 2.2),
 ]
-STRATEGIES = [s for s in STRATEGIES if s[0] in df_equity.columns]
-
-eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)].copy()
-if eq.empty or not STRATEGIES:
-    st.warning("No strategy data in the selected date range.")
+SERIES = [s for s in SERIES if s[0] in df_equity.columns]
+if not SERIES:
+    st.warning("No recognised strategy columns in the equity file.")
     st.stop()
 
-# Each strategy records on its own dates, so forward-fill to align them
-eq_idx = eq.set_index("date").sort_index()
-aligned = eq_idx[[s[0] for s in STRATEGIES]].ffill()
+eq = df_equity[(df_equity["date"] >= start) & (df_equity["date"] <= end)]
+curves = eq.set_index("date").sort_index()[[s[0] for s in SERIES]].ffill()
+curves = curves.dropna(how="all")
+if curves.empty:
+    st.warning("No strategy data in this date range.")
+    st.stop()
 
-mcols = st.columns(len(STRATEGIES))
-for (col, label, color, ls, lw), mcol in zip(STRATEGIES, mcols):
-    series = aligned[col].dropna()
-    if series.empty:
+mc = st.columns(len(SERIES))
+for (col, label, *_), box in zip(SERIES, mc):
+    s = curves[col].dropna()
+    if s.empty:
         continue
-    final = float(series.iloc[-1])
-    s0    = float(series.iloc[0])
-    ret   = (final / s0 - 1) * 100 if s0 else 0
-    mcol.metric(label, "$" + "{:,.0f}".format(final), "{:+.1f}%".format(ret))
+    final, first = float(s.iloc[-1]), float(s.iloc[0])
+    box.metric(label, f"${final:,.0f}", f"{(final/first-1)*100:+.1f}%")
 
 st.markdown("---")
 
-def quarter_fmt(x, _pos=None):
-    d = mdates.num2date(x)
-    return str(d.year) + " Q" + str((d.month - 1) // 3 + 1)
+fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.10,
+                    row_heights=[0.7, 0.3],
+                    subplot_titles=("", "Rolling 12-month margin over the S&P 500"))
 
-fig, axes = plt.subplots(2, 1, figsize=(14, 12), facecolor=CANVAS, dpi=100,
-                         gridspec_kw={"height_ratios": [3, 1]})
-ax = axes[0]
+for col, label, colour, dash, width in SERIES:
+    s = curves[col].dropna()
+    fig.add_trace(go.Scatter(
+        x=s.index, y=s.values, mode="lines", name=label,
+        line=dict(color=colour, width=width, dash=dash),
+        hovertemplate=f"<b>{label}</b><br>%{{x|%b %Y}}<br>$%{{y:,.0f}}<extra></extra>"),
+        row=1, col=1)
+    fig.add_annotation(x=s.index[-1], y=float(s.iloc[-1]),
+                       text=f"  {label}", showarrow=False, xanchor="left",
+                       font=dict(size=11, color=colour), row=1, col=1)
 
-spy_series = None
-for col, label, color, ls, lw in STRATEGIES:
-    series = aligned[col].dropna()
-    if series.empty:
-        continue
-    ax.plot(series.index, series.values, color=color, linestyle=ls, linewidth=lw,
-            label=label + ": $" + "{:,.0f}".format(float(series.iloc[-1])), alpha=0.9)
-    if col == "S&P_500_SPY":
-        spy_series = series
+if "S&P_500_SPY" in curves.columns and "Sector_Rotation" in curves.columns:
+    r12 = curves.pct_change(252)
+    margin = (r12["Sector_Rotation"] - r12["S&P_500_SPY"]).dropna()
+    if not margin.empty:
+        fig.add_trace(go.Scatter(
+            x=margin.index, y=margin.values, mode="lines",
+            line=dict(color=ACCENT, width=2), showlegend=False,
+            hovertemplate="%{x|%b %Y}<br>margin %{y:+.1%}<extra></extra>"), row=2, col=1)
+        fig.add_trace(go.Scatter(
+            x=margin.index, y=np.where(margin.values < 0, margin.values, 0),
+            fill="tozeroy", mode="none", fillcolor="rgba(213,94,0,0.28)",
+            showlegend=False, hoverinfo="skip"), row=2, col=1)
+        fig.add_hline(y=0, line_color=MUTED, line_width=1.5, row=2, col=1)
 
-if spy_series is not None and "Sector_Rotation" in aligned.columns:
-    rot_s = aligned["Sector_Rotation"].dropna()
-    spy_a = spy_series.reindex(rot_s.index).ffill()
-    ok = rot_s.notna() & spy_a.notna()
-    ax.fill_between(rot_s.index[ok], spy_a[ok], rot_s[ok],
-                    where=rot_s[ok] >= spy_a[ok], color=POS_FILL, alpha=0.20,
-                    label="Rotation ahead of SPY")
-    ax.fill_between(rot_s.index[ok], spy_a[ok], rot_s[ok],
-                    where=rot_s[ok] < spy_a[ok], color=NEG_FILL, alpha=0.20,
-                    label="SPY ahead of Rotation")
+fig.update_yaxes(title="Portfolio value", tickprefix="$", row=1, col=1)
+fig.update_yaxes(title="Margin", tickformat="+.0%", row=2, col=1)
+fig.update_layout(showlegend=False, margin=dict(r=170), hovermode="x unified")
 
-ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: "$" + "{:,.0f}".format(x)))
-ax.set_title("Portfolio Growth - All Strategies vs S&P 500")
-ax.legend(loc="upper left")
-ax.xaxis.set_major_locator(mdates.YearLocator())
-ax.xaxis.set_major_formatter(mticker.FuncFormatter(quarter_fmt))
-ax.set_facecolor(CANVAS)
+finals = {label: float(curves[col].dropna().iloc[-1]) for col, label, *_ in SERIES}
+best = max(finals, key=finals.get)
+spy  = finals.get("S&P 500 (SPY)")
+sub  = (f"Best strategy finished at ${finals[best]:,.0f}"
+        + (f", about {finals[best]/spy:.1f}× the index" if spy else ""))
+titled(fig, f"{best} led over this period", sub, height=720)
+show(fig)
 
-# Leading strategy each month, gray when every strategy lost money
-ax2 = axes[1]
-monthly = aligned.resample("ME").last().dropna(how="all")
+st.markdown("---")
+st.subheader("Monthly leader")
+
+monthly = curves.resample("ME").last().dropna(how="all")
 if not monthly.empty:
-    monthly_ret = monthly.pct_change()
-    label_for  = {s[0]: s[1] for s in STRATEGIES}
-    color_for  = {s[0]: s[2] for s in STRATEGIES}
+    rets = monthly.pct_change()
     winners = monthly.idxmax(axis=1)
-    for i, (month, winner) in enumerate(winners.items()):
-        color = color_for.get(winner, GRID)
-        if i > 0 and month in monthly_ret.index:
-            rets = monthly_ret.loc[month].dropna()
-            if len(rets) > 0 and (rets < 0).all():
-                color = AXIS
-        ax2.bar(month, 1, width=20, color=color, alpha=0.9)
-    ax2.set_yticks([])
-    ax2.set_ylabel("Leader")
-    ax2.set_title("Leading Strategy Each Month (gray = every strategy lost money)")
-    patches = [mpatches.Patch(color=c, label=l) for _, l, c, _, _ in STRATEGIES]
-    patches.append(mpatches.Patch(color=AXIS, label="All lost"))
-    ax2.legend(handles=patches, loc="upper left", ncol=5)
-    ax2.xaxis.set_major_locator(mdates.YearLocator())
-    ax2.xaxis.set_major_formatter(mticker.FuncFormatter(quarter_fmt))
-    ax2.set_facecolor(CANVAS)
-
-plt.tight_layout()
-st.pyplot(fig)
-plt.close(fig)
+    label_for = {c: l for c, l, *_ in SERIES}
+    color_for = {c: col for c, _, col, _, _ in SERIES}
+    bar_c, bar_t = [], []
+    for i, (month, win) in enumerate(winners.items()):
+        if i > 0 and month in rets.index and rets.loc[month].notna().any() and (rets.loc[month].dropna() < 0).all():
+            bar_c.append(CONTEXT); bar_t.append("all lost money")
+        else:
+            bar_c.append(color_for.get(win, CONTEXT)); bar_t.append(label_for.get(win, win))
+    figm = go.Figure(go.Bar(
+        x=winners.index, y=[1]*len(winners), marker_color=bar_c, marker_line_width=0,
+        customdata=bar_t,
+        hovertemplate="%{x|%b %Y}<br>%{customdata}<extra></extra>"))
+    figm.update_yaxes(showticklabels=False, showgrid=False, title="")
+    figm.update_xaxes(title="")
+    figm.update_layout(bargap=0.05)
+    titled(figm, "Which strategy was ahead, month by month",
+           "Grey marks months where every strategy lost money", height=230)
+    show(figm)
 
 if not df_trades.empty and "strategy" in df_trades.columns:
     st.markdown("---")
-    st.subheader("Position Trade Log")
+    st.subheader("Position trade log")
 
-    # Sector Rotation reallocates weekly rather than opening discrete positions,
-    # and the optimal-stopping variants are not shown on this page, so Position
-    # Trader is the only strategy with individual trades to list.
     t = df_trades[df_trades["strategy"].astype(str).str.strip() == "Position Trader"].copy()
-
     if t.empty:
         st.info("No Position Trader trades recorded.")
     else:
-        sector_only = st.checkbox("Selected sector only", value=False)
-        if sector_only and "ticker" in t.columns:
+        if st.checkbox("Selected sector only", value=False) and "ticker" in t.columns:
             t = t[t["ticker"].isin(selected)]
-
         if "entry_date" in t.columns:
             t["entry_date"] = pd.to_datetime(t["entry_date"])
             t = t[(t["entry_date"] >= start) & (t["entry_date"] <= end)]
 
-        total_t = len(t)
-        wins = int((t["return_pct"] > 0).sum()) if total_t and "return_pct" in t.columns else 0
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Trades", str(total_t))
-        c2.metric("Win Rate",   "{:.1f}%".format(wins / total_t * 100) if total_t else "N/A")
-        c3.metric("Avg Return", "{:+.2f}%".format(float(t["return_pct"].mean())) if total_t else "N/A")
-        c4.metric("Best Trade", "{:+.1f}%".format(float(t["return_pct"].max())) if total_t else "N/A")
+        total = len(t)
+        wins = int((t["return_pct"] > 0).sum()) if total else 0
+        k = st.columns(4)
+        k[0].metric("Trades", f"{total}")
+        k[1].metric("Win rate", f"{wins/total*100:.1f}%" if total else "N/A")
+        k[2].metric("Average return", f"{t['return_pct'].mean():+.2f}%" if total else "N/A")
+        k[3].metric("Best trade", f"{t['return_pct'].max():+.1f}%" if total else "N/A")
 
-        if total_t:
-            col_map = {
-                "ticker": "Ticker",
-                "entry_date": "Entry Date", "exit_date": "Exit Date",
-                "entry_price": "Entry Price", "exit_price": "Exit Price",
-                "return_pct": "Return %", "portfolio_val": "Portfolio Value",
-                "trigger_source": "Trigger Source",
-            }
-            keep = [x for x in col_map if x in t.columns]
-            disp = t[keep].rename(columns=col_map)
-            disp = disp.sort_values("Entry Date", ascending=False)
-            if "Entry Date" in disp.columns:
-                disp["Entry Date"] = pd.to_datetime(disp["Entry Date"]).dt.strftime("%Y-%m-%d")
-            if "Exit Date" in disp.columns:
-                disp["Exit Date"] = pd.to_datetime(disp["Exit Date"]).dt.strftime("%Y-%m-%d")
-            for cc in ("Entry Price", "Exit Price"):
-                if cc in disp.columns:
-                    disp[cc] = disp[cc].apply(lambda x: "${:,.2f}".format(x) if pd.notna(x) else "")
-            if "Portfolio Value" in disp.columns:
-                disp["Portfolio Value"] = disp["Portfolio Value"].apply(
-                    lambda x: "${:,.0f}".format(x) if pd.notna(x) else "")
+        if total:
+            cols = {"ticker":"Ticker","entry_date":"Entry date","exit_date":"Exit date",
+                    "entry_price":"Entry price","exit_price":"Exit price",
+                    "return_pct":"Return %","portfolio_val":"Portfolio value",
+                    "trigger_source":"Trigger source"}
+            keep = [c for c in cols if c in t.columns]
+            disp = t[keep].rename(columns=cols).sort_values("Entry date", ascending=False)
+            for dc in ("Entry date","Exit date"):
+                if dc in disp.columns:
+                    disp[dc] = pd.to_datetime(disp[dc]).dt.strftime("%Y-%m-%d")
+            for pc in ("Entry price","Exit price"):
+                if pc in disp.columns:
+                    disp[pc] = disp[pc].apply(lambda x: f"${x:,.2f}" if pd.notna(x) else "")
+            if "Portfolio value" in disp.columns:
+                disp["Portfolio value"] = disp["Portfolio value"].apply(
+                    lambda x: f"${x:,.0f}" if pd.notna(x) else "")
             if "Return %" in disp.columns:
                 disp["Return %"] = disp["Return %"].apply(
-                    lambda x: "{:+.2f}%".format(x) if pd.notna(x) else "")
+                    lambda x: f"{x:+.2f}%" if pd.notna(x) else "")
             st.dataframe(disp.reset_index(drop=True), width="stretch", hide_index=True)
-        else:
-            st.info("No trades in this date range.")
 
-    st.caption(
-        "Only Position Trader opens and closes discrete positions. Sector Rotation "
-        "reallocates across a whole sector each week, so it is recorded as an equity "
-        "curve rather than individual trades."
-    )
+    st.caption("Sector Rotation reallocates weekly rather than opening discrete "
+               "positions, so it produces an equity curve rather than trade rows.")

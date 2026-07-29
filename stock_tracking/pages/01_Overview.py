@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils import (load_signals, load_price, sidebar_filters, get_sig_col, SENTIMENT_THRESHOLD, apply_chart_style,
-                   POS, NEG, NEU, INK, PRICE, AXIS, MUTED, GRID, CANVAS, POS_FILL, NEG_FILL)
+from utils import (load_signals, load_price, sidebar_filters, get_sig_col,
+                   SENTIMENT_THRESHOLD, apply_chart_style, titled, show,
+                   POS, NEG, NEU, INK, PRICE, MUTED, CONTEXT, GRID)
 
 st.header("Overview")
 
@@ -23,82 +24,83 @@ if daily_signals.empty:
 
 sig_col = get_sig_col(daily_signals)
 
-view = st.radio("View Mode", ["One Ticker", "All Stacked"], horizontal=True)
+st.markdown(
+    "Sentiment scored from six sources, shown against how the price actually moved. "
+    "Blue bars are positive days, orange negative, grey inside the neutral threshold."
+)
 
-ctrl, legend = st.columns([2, 3])
-with ctrl:
-    roll = st.slider("Rolling Window (days)", 7, 90, 30)
-with legend:
-    st.markdown(
-        "<div style='padding-top:1.9rem; font-size:0.95rem;'>"
-        "<span style='display:inline-block;width:14px;height:14px;background:' + POS + ';"
-        "border-radius:3px;vertical-align:middle;margin-right:6px;'></span>Positive"
-        "<span style='display:inline-block;width:14px;height:14px;background:' + NEG + ';"
-        "border-radius:3px;vertical-align:middle;margin:0 6px 0 18px;'></span>Negative"
-        "<span style='display:inline-block;width:14px;height:14px;background:' + NEU + ';"
-        "border-radius:3px;vertical-align:middle;margin:0 6px 0 18px;'></span>Neutral"
-        "<span style='display:inline-block;width:22px;height:3px;background:' + INK + ';"
-        "vertical-align:middle;margin:0 6px 0 18px;'></span>Rolling average"
-        "<span style='display:inline-block;width:22px;height:3px;background:' + PRICE + ';"
-        "vertical-align:middle;margin:0 6px 0 18px;'></span>7-day price change"
-        "</div>",
-        unsafe_allow_html=True,
-    )
+c1, c2 = st.columns([1, 1])
+with c1:
+    view = st.radio("View", ["One ticker", "All in sector"], horizontal=True)
+with c2:
+    roll = st.slider("Rolling window (days)", 7, 90, 30,
+                     help="How many days to average the sentiment line over. "
+                          "Wider smooths daily noise but reacts more slowly.")
 
 valid = [t for t in selected if t in set(daily_signals["ticker"])]
 if not valid:
     st.warning("No signal data for tickers in this sector.")
     st.stop()
 
-tickers_to_plot = [st.selectbox("Ticker", valid)] if view == "One Ticker" else valid
+tickers_to_plot = [st.selectbox("Ticker", valid)] if view == "One ticker" else valid
 
 for ticker in tickers_to_plot:
     sig = daily_signals[
         (daily_signals["ticker"] == ticker)
         & (daily_signals["date"] >= start)
         & (daily_signals["date"] <= end)
-    ].copy()
+    ].copy().sort_values("date")
 
     price = load_price(ticker, token)
     if price.empty:
-        st.warning(ticker + ": no price data")
+        st.warning(f"{ticker}: no price data")
         continue
     price = price[(price["Date"] >= start) & (price["Date"] <= end)]
 
-    has_signal = int(sig[sig_col].notna().sum())
+    n_signal = int(sig[sig_col].notna().sum())
+    if n_signal < 5:
+        st.info(f"{ticker}: only {n_signal} signal days in this range.")
+        continue
 
-    fig, ax1 = plt.subplots(figsize=(14, 5), facecolor=CANVAS, dpi=100)
-    ax2 = ax1.twinx()
+    sv = sig[sig_col].fillna(0)
+    bar_colors = np.where(sv >= SENTIMENT_THRESHOLD, POS,
+                  np.where(sv <= -SENTIMENT_THRESHOLD, NEG, NEU))
+    smooth = sig[sig_col].rolling(roll, min_periods=1).mean()
 
-    pct = price["pct_7d"].fillna(0)
-    ax2.fill_between(price["Date"], 0, pct, where=pct >= 0, color=POS, alpha=0.12)
-    ax2.fill_between(price["Date"], 0, pct, where=pct < 0,  color=NEG, alpha=0.12)
-    ax2.plot(price["Date"], pct, color=PRICE, linewidth=1.5, alpha=0.7)
-    ax2.axhline(0, color=AXIS, linewidth=0.5)
-    ax2.set_ylabel("7-Day % Price Change", color=PRICE)
-    ax2.tick_params(axis="y", labelcolor=PRICE)
-    ax2.grid(False)
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    if has_signal >= 5:
-        sv = sig[sig_col].fillna(0)
-        smooth = sig[sig_col].rolling(roll, min_periods=1).mean()
-        colors_s = [
-            POS if v >= SENTIMENT_THRESHOLD
-            else (NEG if v <= -SENTIMENT_THRESHOLD else NEU)
-            for v in sv
-        ]
-        ax1.bar(sig["date"], sv, color=colors_s, alpha=0.5, width=2)
-        ax1.plot(sig["date"], smooth, color=INK, linewidth=2, alpha=0.9)
-    else:
-        ax1.text(0.5, 0.5, "Only " + str(has_signal) + " signal days",
-                 ha="center", va="center", transform=ax1.transAxes, color=MUTED)
+    fig.add_trace(go.Bar(
+        x=sig["date"], y=sv, marker_color=bar_colors, marker_line_width=0,
+        name="Daily sentiment", opacity=0.65,
+        hovertemplate="%{x|%d %b %Y}<br>sentiment %{y:.3f}<extra></extra>"),
+        secondary_y=False)
 
-    ax1.axhline(0, color=AXIS, linewidth=0.5)
-    ax1.set_ylabel("Sentiment Score")
-    ax1.set_facecolor(CANVAS)
-    ax1.set_title(ticker + " - Sentiment and 7-Day % Price Change | "
-                  + str(has_signal) + " signal days")
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close(fig)
+    fig.add_trace(go.Scatter(
+        x=sig["date"], y=smooth, mode="lines",
+        line=dict(color=INK, width=2.5), name=f"{roll}-day average",
+        hovertemplate="%{x|%d %b %Y}<br>average %{y:.3f}<extra></extra>"),
+        secondary_y=False)
+
+    fig.add_trace(go.Scatter(
+        x=price["Date"], y=price["pct_7d"], mode="lines",
+        line=dict(color=PRICE, width=1.6), name="7-day price change",
+        hovertemplate="%{x|%d %b %Y}<br>price %{y:+.1f}%<extra></extra>"),
+        secondary_y=True)
+
+    fig.add_hline(y=0, line_color=MUTED, line_width=1, line_dash="dot")
+
+    fig.update_yaxes(title_text="Sentiment score", secondary_y=False)
+    fig.update_yaxes(title_text="7-day price change (%)", secondary_y=True,
+                     showgrid=False, tickformat="+.0f")
+    fig.update_layout(
+        legend=dict(orientation="h", y=1.02, x=0, yanchor="bottom"),
+        bargap=0.1, hovermode="x unified")
+
+    avg_sent = float(sig[sig_col].mean())
+    mood = "leaned positive" if avg_sent > 0.02 else ("leaned negative" if avg_sent < -0.02 else "stayed close to neutral")
+    titled(fig,
+           f"{ticker} sentiment {mood} over this period",
+           f"{n_signal:,} days carried a sentiment reading | "
+           f"average score {avg_sent:+.3f}",
+           height=460)
+    show(fig)
