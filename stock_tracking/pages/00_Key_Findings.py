@@ -270,7 +270,44 @@ if not equity.empty:
 else:
     st.info("Strategy results not available yet. Run C_strategy_engine.ipynb.")
 
-# ── Where to go next ───────────────────────────────────────────────────────
+# ── Where this goes next ───────────────────────────────────────────────────
+st.markdown("---")
+st.subheader("Where this goes next")
+
+st.markdown(
+    "**Replacing VADER with FinBERT is the single highest-value change.** VADER is a "
+    "rule-based model built for general English — social posts, product reviews, news of "
+    "any kind. It scores words against a fixed lexicon and has no concept of finance. "
+    "\"Beat expectations\" reads as mildly positive because *beat* is a positive word, "
+    "while \"missed estimates\" barely registers at all. \"Shares plunged on strong "
+    "guidance\" confuses it entirely.\n\n"
+
+    "FinBERT is a BERT variant fine-tuned on financial text — analyst reports, earnings "
+    "calls and financial news — and learns from context rather than a word list. It knows "
+    "that missing estimates is bad news regardless of the surrounding wording, that "
+    "*volatile* is neutral in a market context, and that a guidance cut matters more than "
+    "an upbeat adjective elsewhere in the same sentence. Published benchmarks put it "
+    "substantially ahead of lexicon methods on financial sentiment classification.\n\n"
+
+    "That matters most for the unresolved negative-signal result above. If VADER is "
+    "systematically misreading bad news — scoring genuinely negative articles as neutral, "
+    "or catching the wrong ones — then the negative sample is not just small but "
+    "contaminated. FinBERT would test whether the below-chance reading is a real market "
+    "effect or an artifact of the measurement, which is currently the most important open "
+    "question in this project.\n\n"
+
+    "Two changes would pair well with it. Scoring **full article text instead of headlines** "
+    "would give the model the context it is designed to use, since a headline strips out "
+    "exactly the qualifying detail that separates real bad news from routine commentary. "
+    "And FinBERT returns a **three-way classification with confidence scores** rather than "
+    "a single compound number, so low-confidence readings could be excluded instead of "
+    "being averaged in as though they were as reliable as clear ones.\n\n"
+
+    "The trade-off is cost. VADER scores half a million headlines in minutes on a laptop; "
+    "FinBERT is a transformer requiring GPU inference or a paid API, and re-scoring eleven "
+    "years of six sources is a meaningful compute job rather than an afternoon's work."
+)
+
 st.markdown("---")
 st.subheader("Explore the data yourself")
 st.markdown(

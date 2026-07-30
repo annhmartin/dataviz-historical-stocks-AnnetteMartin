@@ -9,7 +9,7 @@ from utils import (load_signals, load_price, sidebar_filters, get_sig_col,
                    SENTIMENT_THRESHOLD, apply_chart_style, titled, show,
                    POS, NEG, NEU, INK, PRICE, MUTED, CONTEXT, GRID)
 
-st.header("Overview")
+st.header("Sentiment vs Price")
 
 selected, start, end, token = sidebar_filters()
 apply_chart_style()
