@@ -15,7 +15,7 @@ st.markdown(
     "Six sources of public discussion — mainstream news, Hacker News, five subreddits, "
     "investor posts and SEC filings — scored for sentiment across eleven years and "
     "matched against daily prices for roughly two thousand companies.\n\n"
-    "**The short answer: yes, but modestly, and not in the direction you would expect.**"
+    "**The short answer: yes, but modestly — and the edge has been shrinking.**"
 )
 
 token = get_token()
@@ -105,21 +105,33 @@ else:
 
 # ── Finding 1: the asymmetry ────────────────────────────────────────────────
 st.markdown("---")
-st.subheader("1 · Pessimism is a buy signal")
+st.subheader("1 · Positive sentiment carries a small but real edge")
 
-contrarian = neg_rate < 0.5 < pos_rate
-if contrarian:
+st.markdown(
+    f"When public discussion turns positive, prices rose over the following "
+    f"{stats['hold']} trading days **{pos_rate*100:.1f}%** of the time — "
+    f"{(pos_rate-0.5)*100:.1f} points better than chance, across {pos_n:,} signals. "
+    f"The margin is small by design: an obvious edge would already have been "
+    f"competed away. It is consistent enough to build a strategy on, which is what "
+    f"finding 3 tests."
+)
+
+with st.expander("What about negative sentiment?"):
     st.markdown(
-        f"Positive chatter predicts gains **{pos_rate*100:.1f}%** of the time — a real "
-        f"if modest edge. Negative chatter predicts correctly only **{neg_rate*100:.1f}%** "
-        f"of the time, which means prices usually *rose* after it. Public pessimism looks "
-        f"closer to a contrarian buy indicator than a warning."
-    )
-else:
-    st.markdown(
-        f"Positive chatter is right {pos_rate*100:.1f}% of the time and negative chatter "
-        f"{neg_rate*100:.1f}%, a gap of {abs(pos_rate-neg_rate)*100:.1f} percentage points. "
-        f"The two directions are not mirror images."
+        f"Negative signals in this dataset called direction correctly "
+        f"{neg_rate*100:.1f}% of the time across {neg_n:,} observations — below chance, "
+        f"which would imply prices tended to rise after negative chatter.\n\n"
+        f"That runs counter to a well-established body of research finding that negative "
+        f"news does predict negative returns, so it is treated here as a limitation "
+        f"rather than a result. Three things most likely explain it. Negative signals are "
+        f"roughly a third as numerous as positive ones, so the estimate is far less "
+        f"stable. VADER is a general-purpose sentiment model and misreads financial "
+        f"phrasing — \"missed estimates\" and \"beat expectations\" carry meanings it "
+        f"does not know. And scoring headlines rather than full articles loses the "
+        f"context that distinguishes genuine bad news from routine commentary.\n\n"
+        f"Resolving this would need a finance-tuned sentiment model and full article "
+        f"text. The analysis below therefore leans on positive signals, where the "
+        f"sample is larger and the direction matches expectation."
     )
 
 fig1 = go.Figure()
@@ -141,10 +153,10 @@ fig1.update_yaxes(title="Share of signals that called direction correctly",
 fig1.update_xaxes(title="")
 fig1.update_layout(showlegend=False)
 titled(fig1,
-       ("Negative sentiment points the wrong way more often than chance"
-        if contrarian else "Positive and negative sentiment differ in reliability"),
-       f"Judged over the following {stats['hold']} trading days · "
-       f"{pos_n:,} positive and {neg_n:,} negative signals",
+       f"Positive buzz beats chance by {(pos_rate-0.5)*100:.1f} points",
+       f"Judged over the following {stats['hold']} trading days. "
+       f"Negative signals are shown for completeness on a much smaller sample "
+       f"({neg_n:,} against {pos_n:,}) and are discussed above",
        height=420)
 show(fig1)
 
