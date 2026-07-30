@@ -15,9 +15,9 @@ PAGES = [
     ("pages/07_What_If.py",        "What If"),
     ("pages/02_Signal_Quality.py", "Signal Quality"),
     ("pages/03_Correlation.py",    "Correlation"),
+    ("pages/01_Overview.py",       "Sentiment vs Price"),
     ("pages/05_Key_Moments.py",    "Key Moments"),
     ("pages/06_Sources.py",        "Sources"),
-    ("pages/01_Overview.py",       "Sentiment vs Price"),
 ]
 
 missing = [rel for rel, _ in PAGES if not os.path.isfile(os.path.join(HERE, rel))]

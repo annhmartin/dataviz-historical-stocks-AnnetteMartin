@@ -281,9 +281,9 @@ st.markdown(
     "| **What If** | What would your own investment have returned? |\n"
     "| **Signal Quality** | When sentiment fires, how often is it right? |\n"
     "| **Correlation** | Which companies have the most predictive chatter? |\n"
+    "| **Sentiment vs Price** | How does sentiment track price for one company? |\n"
     "| **Key Moments** | What was being said before a large price move? |\n"
-    "| **Sources** | Which feeds carry the most, and the strongest, signal? |\n"
-    "| **Sentiment vs Price** | How does sentiment track price for one company? |"
+    "| **Sources** | Which feeds carry the most, and the strongest, signal? |"
 )
 
 st.markdown("---")

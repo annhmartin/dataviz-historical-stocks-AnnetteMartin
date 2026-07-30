@@ -8,13 +8,15 @@ prices for roughly two thousand companies.
 
 The short answer is yes, but modestly — and the edge has been shrinking.
 
-🔗 **[Live dashboard](https://share.streamlit.io)** · Data Visualization · Final Individual
-Project · Summer 2026
+🔗 **[Live dashboard](https://dataviz-historical-stocks-annettemartin-yjxmirzubvddhwowkmbzyx.streamlit.app)** — deployed on Streamlit Community Cloud
 
-📓 **Main analysis notebook: [`Tech_Pulse_Analysis.ipynb`](Tech_Pulse_Analysis.ipynb)** — in
-the repository root. This is the primary Python deliverable: exploratory analysis followed by
-ten analytical questions, each answered with one Plotly figure. The notebooks in
-`Python files A-D/` are the upstream data pipeline that produces the inputs it reads.
+📓 **[`Tech_Pulse_Analysis.ipynb`](https://github.com/annhmartin/dataviz-historical-stocks-AnnetteMartin/blob/main/Tech_Pulse_Analysis.ipynb)** — the main analysis notebook, in the repository
+root. This is the primary Python deliverable: preliminary exploration followed by thirteen
+analytical questions, each answered with one Plotly figure. Every figure in it also appears in
+the dashboard. The notebooks in `Python files A-D/` are the upstream data pipeline that
+produces the inputs it reads.
+
+Data Visualization · Final Individual Project · Summer 2026
 
 ---
 
@@ -97,7 +99,10 @@ Six independent sources, all public. Nothing here is synthetic or a teaching set
   and [polygon.io](https://polygon.io/)
 - **What:** Article-level sentiment scores already tagged to a ticker, with relevance
   weighting.
-- **In this repo:** `Raw Data Pulled/stocktwits_data/stocktwits_{TICKER}.csv`
+- **In this repo:** `Raw Data Pulled/stocktwits_data/stocktwits_{TICKER}.csv` — **not
+  currently populated.** The folder was lost during a repository reorganisation and has not
+  been re-collected, so this source contributes nothing to the present results. Section 7 of
+  `incremental_updater.ipynb` rebuilds it given API keys.
 - **Note:** the folder name is historical. StockTwits was the original source but moved
   behind Cloudflare bot protection, so these two APIs replaced it.
 
@@ -126,7 +131,7 @@ Six independent sources, all public. Nothing here is synthetic or a teaching set
 | GDELT | Text, temporal | `Raw Data Pulled/gdelt_data/` |
 | Hacker News | Text, temporal | `Raw Data Pulled/hn_data/` |
 | Reddit ×5 | Text, categorical | `Raw Data Pulled/reddit_data/` |
-| Alpha Vantage / Polygon | Numerical | `Raw Data Pulled/stocktwits_data/` |
+| Alpha Vantage / Polygon | Numerical | `Raw Data Pulled/stocktwits_data/` — not currently populated |
 | SEC EDGAR | Categorical, temporal | `Raw Data Pulled/edgar_data/` |
 | Daily prices | Numerical, temporal | `stock_tracking/stocks/` |
 
@@ -138,51 +143,65 @@ rather than set by intuition.
 
 ```
 .
-├── Tech_Pulse_Analysis.ipynb      Main analysis — ten questions, Plotly figures
+├── Tech_Pulse_Analysis.ipynb          MAIN DELIVERABLE — 13 analytical questions
+├── README.md
 │
-├── Python files A-D/              Data pipeline, run in order
-│   ├── A_sentiment_engine.ipynb   Collect, match to tickers, score, aggregate
-│   ├── B_correlation_engine.ipynb Correlations, key moves, source weights, ticker audit
-│   ├── C_strategy_engine.ipynb    Backtests, portfolio-wide and per sector
-│   └── D_charts.ipynb             Earlier static charts, superseded by the notebook above
+├── Python files A-D/                  Data pipeline, run in order
+│   ├── A_sentiment_engine.ipynb       Collect, match to tickers, score, aggregate
+│   ├── B_correlation_engine.ipynb     Correlations, key moves, source weights, ticker audit
+│   ├── C_strategy_engine.ipynb        Backtests, portfolio-wide and per sector
+│   ├── D_charts.ipynb                 Earlier static charts, superseded
+│   └── incremental_updater.ipynb      Refresh all sources in one pass
 │
-├── Raw Data Pulled/               Source data, one folder per source
-│   ├── hn_data/  reddit_data/  gdelt_data/
-│   └── edgar_data/  stocktwits_data/
+├── Raw Data Pulled/                   Source data, one folder per source
+│   ├── gdelt_data/                    268 files — news per ticker per year
+│   ├── reddit_data/                    20 files — posts per year
+│   ├── hn_data/                        18 files — stories per year
+│   └── edgar_data/                     26 files — SEC filings per ticker
 │
-├── stock_tracking/                Streamlit application
-│   ├── app.py                     Entry point and navigation
-│   ├── utils.py                   Data loading, colour system, sidebar filters
-│   ├── pages/                     Eight dashboard pages
-│   ├── .streamlit/config.toml     Theme matching the chart palette
-│   ├── stocks/                    Daily price history per ticker
-│   ├── sentiment_outputs/         Quarterly signal files from notebook A
-│   ├── correlation_outputs/       Correlation results from notebook B
-│   └── strategy_outputs/          Equity curves and trade log from notebook C
+├── stock_tracking/                    Streamlit application and processed outputs
+│   ├── app.py                         Entry point and navigation
+│   ├── utils.py                       Data loading, colour system, sidebar filters
+│   ├── requirements.txt
+│   ├── pages/                           8 dashboard pages
+│   ├── stocks/                       4,199 files — daily prices per ticker, plus index.csv
+│   ├── sentiment_outputs/              50 files — quarterly signals from notebook A
+│   ├── correlation_outputs/             5 files — results from notebook B
+│   ├── strategy_outputs/                2 files — equity curves and trade log from notebook C
+│   └── tech_pulse_outputs/              9 files — legacy outputs from an earlier version
 │
-├── incremental_updater.ipynb      Refresh all six sources in one pass
-└── archive/                       Superseded collectors and experiments
+└── archive/                           Superseded collectors and earlier iterations
 ```
 
----
+The pipeline writes into `stock_tracking/` so that the deployed dashboard can read processed
+outputs straight from the repository without a separate database or redeployment.
 
 ## The dashboard
 
-Eight pages. The first leads with the findings; the rest are for exploration, filtered by
-sector and date range from the sidebar.
+**[View it live](https://dataviz-historical-stocks-annettemartin-yjxmirzubvddhwowkmbzyx.streamlit.app)**
 
-| Page | Question it answers |
-|------|--------------------|
-| **Key Findings** | What did the analysis conclude? Headline metrics and the three main results |
-| **Sentiment vs Price** | How does sentiment track price for one company? |
-| **Signal Quality** | When sentiment fires, how often is it right? |
-| **Correlation** | Which companies have the most predictive chatter? |
-| **Strategies** | Would trading these signals have beaten the market? |
-| **Key Moments** | What was being said before a large price move? |
-| **Sources** | Which feeds carry the most, and the strongest, signal? |
-| **What If** | What would a given investment have returned? |
+Eight pages. The first leads with the findings; the rest are for exploration, filtered from
+the sidebar. They appear in this order:
 
----
+| # | Page | Question it answers |
+|---|------|--------------------|
+| 1 | **Key Findings** | What did the analysis conclude? Headline metrics and the three main results |
+| 2 | **Strategies** | Would trading these signals have beaten the market? |
+| 3 | **What If** | What would a given investment have returned? |
+| 4 | **Signal Quality** | When sentiment fires, how often is it right? |
+| 5 | **Correlation** | Which companies have the most predictive chatter? |
+| 6 | **Sentiment vs Price** | How does sentiment track price for one company? |
+| 7 | **Key Moments** | What was being said before a large price move? |
+| 8 | **Sources** | Which feeds carry the most, and the strongest, signal? |
+
+Key Findings opens by default so the conclusions come before the tools. The order then runs
+from outcomes to mechanics: what the strategies returned, how reliable the underlying signal
+is, and finally where the signal comes from.
+
+Sidebar filters appear only where they change the result. Strategies and What If take a date
+range but no sector, since their backtests are portfolio-wide. Sources takes a sector but no
+date range. The date control offers presets — all data, last one, three or five years, 2018
+onward — or a custom range.
 
 ## Design notes
 
@@ -289,6 +308,11 @@ holds in markets with different retail participation.
   confidence bands on those figures are part of the finding rather than decoration
 - This is one historical period in one market, and the post-2021 decay is itself evidence
   that these relationships do not hold still
+
+## Links
+
+- **Dashboard:** https://dataviz-historical-stocks-annettemartin-yjxmirzubvddhwowkmbzyx.streamlit.app
+- **Main notebook:** https://github.com/annhmartin/dataviz-historical-stocks-AnnetteMartin/blob/main/Tech_Pulse_Analysis.ipynb
 
 ## Disclaimer
 
