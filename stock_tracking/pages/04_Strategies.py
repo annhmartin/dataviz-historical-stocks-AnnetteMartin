@@ -10,7 +10,7 @@ from utils import (load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style,
 
 st.header("Strategies")
 
-selected, start, end, token = sidebar_filters()
+selected, start, end, token = sidebar_filters(show_sector=False)
 apply_chart_style()
 
 st.markdown(
@@ -124,7 +124,7 @@ best = max(finals, key=finals.get)
 spy  = finals.get("S&P 500 (SPY)")
 sub  = (f"Best strategy finished at ${finals[best]:,.0f}"
         + (f", about {finals[best]/spy:.1f}× the index" if spy else ""))
-titled(fig, f"{best} led over this period", sub, height=720)
+titled(fig, f"Which strategy came out ahead? {best}", sub, height=720)
 show(fig)
 
 st.markdown("---")
@@ -167,7 +167,7 @@ if not monthly.empty:
         legend=dict(orientation="h", yanchor="top", y=-0.45,
                     xanchor="left", x=0),
         margin=dict(b=120))
-    titled(figm, "Which strategy was ahead, month by month",
+    titled(figm, "Which strategy was ahead in any given month?",
            "Grey marks months where every strategy lost money", height=320)
     show(figm)
 

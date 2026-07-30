@@ -153,7 +153,7 @@ fig1.update_yaxes(title="Share of signals that called direction correctly",
 fig1.update_xaxes(title="")
 fig1.update_layout(showlegend=False)
 titled(fig1,
-       f"Positive buzz beats chance by {(pos_rate-0.5)*100:.1f} points",
+       f"Does positive buzz beat chance? Yes, by {(pos_rate-0.5)*100:.1f} points",
        f"Judged over the following {stats['hold']} trading days. "
        f"Negative signals are shown for completeness on a much smaller sample "
        f"({neg_n:,} against {pos_n:,}) and are discussed above",
@@ -194,7 +194,7 @@ if len(by_year) >= 4:
     fig2.update_yaxes(title="Directional accuracy", tickformat=".0%")
     fig2.update_xaxes(title="", dtick=1)
     titled(fig2,
-           f"Accuracy fell {abs(late-early)*100:.1f} points after 2021",
+           f"Has the edge faded? Accuracy fell {abs(late-early)*100:.1f} points after 2021",
            "Annual hit rate. Years with fewer than 100 signals are excluded",
            height=430)
     show(fig2)
@@ -263,63 +263,45 @@ if not equity.empty:
     best = max(((c, l) for c, l, *_ in SERIES),
                key=lambda t: float(curves[t[0]].dropna().iloc[-1]))
     titled(fig3,
-           f"{best[1]} finished ahead of both passive benchmarks",
+           f"Does it survive execution? {best[1]} finished ahead of both benchmarks",
            "Starting from $10,000 in 2015, including transaction costs",
            height=700)
     show(fig3)
 else:
     st.info("Strategy results not available yet. Run C_strategy_engine.ipynb.")
 
-# ── Where this goes next ───────────────────────────────────────────────────
-st.markdown("---")
-st.subheader("Where this goes next")
-
-st.markdown(
-    "**Replacing VADER with FinBERT is the single highest-value change.** VADER is a "
-    "rule-based model built for general English — social posts, product reviews, news of "
-    "any kind. It scores words against a fixed lexicon and has no concept of finance. "
-    "\"Beat expectations\" reads as mildly positive because *beat* is a positive word, "
-    "while \"missed estimates\" barely registers at all. \"Shares plunged on strong "
-    "guidance\" confuses it entirely.\n\n"
-
-    "FinBERT is a BERT variant fine-tuned on financial text — analyst reports, earnings "
-    "calls and financial news — and learns from context rather than a word list. It knows "
-    "that missing estimates is bad news regardless of the surrounding wording, that "
-    "*volatile* is neutral in a market context, and that a guidance cut matters more than "
-    "an upbeat adjective elsewhere in the same sentence. Published benchmarks put it "
-    "substantially ahead of lexicon methods on financial sentiment classification.\n\n"
-
-    "That matters most for the unresolved negative-signal result above. If VADER is "
-    "systematically misreading bad news — scoring genuinely negative articles as neutral, "
-    "or catching the wrong ones — then the negative sample is not just small but "
-    "contaminated. FinBERT would test whether the below-chance reading is a real market "
-    "effect or an artifact of the measurement, which is currently the most important open "
-    "question in this project.\n\n"
-
-    "Two changes would pair well with it. Scoring **full article text instead of headlines** "
-    "would give the model the context it is designed to use, since a headline strips out "
-    "exactly the qualifying detail that separates real bad news from routine commentary. "
-    "And FinBERT returns a **three-way classification with confidence scores** rather than "
-    "a single compound number, so low-confidence readings could be excluded instead of "
-    "being averaged in as though they were as reliable as clear ones.\n\n"
-
-    "The trade-off is cost. VADER scores half a million headlines in minutes on a laptop; "
-    "FinBERT is a transformer requiring GPU inference or a paid API, and re-scoring eleven "
-    "years of six sources is a meaningful compute job rather than an afternoon's work."
-)
-
+# ── Explore, then future work ──────────────────────────────────────────────
 st.markdown("---")
 st.subheader("Explore the data yourself")
 st.markdown(
-    "Use the sector and date filters in the sidebar, then work through the pages:\n\n"
+    "Filters in the sidebar carry across pages.\n\n"
     "| Page | What it answers |\n"
     "|------|-----------------|\n"
-    "| **Overview** | How does sentiment track price for one company? |\n"
+    "| **Strategies** | Would trading these signals have beaten the market? |\n"
+    "| **What If** | What would your own investment have returned? |\n"
     "| **Signal Quality** | When sentiment fires, how often is it right? |\n"
     "| **Correlation** | Which companies have the most predictive chatter? |\n"
-    "| **Strategies** | Would trading these signals have beaten the market? |\n"
     "| **Key Moments** | What was being said before a large price move? |\n"
     "| **Sources** | Which feeds carry the most, and the strongest, signal? |\n"
-    "| **What If** | What would your own investment have returned? |"
+    "| **Sentiment vs Price** | How does sentiment track price for one company? |"
+)
+
+st.markdown("---")
+st.subheader("Future work")
+st.markdown(
+    "**Swap VADER for FinBERT.** VADER matches words against a general-English lexicon "
+    "and knows nothing about finance — \"beat expectations\" scores positive because "
+    "*beat* is a positive word, while \"missed estimates\" barely registers. FinBERT is "
+    "fine-tuned on analyst reports and financial news, and reads context instead.\n\n"
+
+    "That matters most for the unresolved negative-signal result above. If VADER is "
+    "systematically misreading bad news, the negative sample is contaminated rather than "
+    "merely small, and FinBERT would settle whether the below-chance reading is real. "
+    "Scoring full articles rather than headlines, and using FinBERT's confidence scores to "
+    "drop uncertain readings, would both help. The cost is compute: VADER runs locally in "
+    "minutes, FinBERT needs GPU inference across eleven years of six sources.\n\n"
+
+    "Also worth pursuing: intraday resolution, explicit market-regime conditioning given "
+    "the post-2021 decay, and testing markets outside the US."
 )
 st.caption("Built for coursework and research. Nothing here is investment advice.")

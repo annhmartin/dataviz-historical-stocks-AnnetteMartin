@@ -151,8 +151,9 @@ fig.update_layout(
 
 days_before = int(move["days_before"])
 titled(fig,
-       f"Sentiment moved {days_before} day{'s' if days_before != 1 else ''} "
-       f"before {ticker_km} jumped {move['return_pct']:+.1f}%",
+       f"Did chatter move first? Sentiment fired {days_before} day"
+       f"{'s' if days_before != 1 else ''} before {ticker_km} moved "
+       f"{move['return_pct']:+.1f}%",
        f"{move['move_date']:%d %B %Y} · signal strength {move['sentiment']:+.3f} · "
        f"sources: {move.get('sources_active', 'unknown')}",
        height=760)

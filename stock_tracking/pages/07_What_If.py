@@ -9,7 +9,7 @@ from utils import (load_csv, sidebar_filters, STRAT_PREFIX, apply_chart_style,
 
 st.header("What If")
 
-selected, start, end, token = sidebar_filters()
+selected, start, end, token = sidebar_filters(show_sector=False)
 apply_chart_style()
 
 df_equity = load_csv(STRAT_PREFIX + "/equity_curves.csv", token)
@@ -117,7 +117,7 @@ fig.update_layout(
 
 best = max(results, key=lambda k: results[k]["final"])
 titled(fig,
-       f"${amount:,.0f} in {best} would have become ${results[best]['final']:,.0f}",
+       f"What would ${amount:,.0f} have become? ${results[best]['final']:,.0f} in {best}",
        f"From {start:%B %Y} to {end:%B %Y}, including transaction costs",
        height=580)
 show(fig)
@@ -154,7 +154,7 @@ if not df_trades.empty and {"entry_date", "return_pct"} <= set(df_trades.columns
 
         win_rate = len(wins) / len(t) * 100
         titled(figt,
-               f"{len(wins)} of {len(t)} trades made money, a {win_rate:.0f}% win rate",
+               f"How many trades actually made money? {len(wins)} of {len(t)}, a {win_rate:.0f}% win rate",
                f"Average return {t.return_pct.mean():+.2f}% per trade",
                height=420)
         show(figt)

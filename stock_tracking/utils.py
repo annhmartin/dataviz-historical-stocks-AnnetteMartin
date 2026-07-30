@@ -141,53 +141,93 @@ def get_token():
     except Exception:
         return None
 
-def sidebar_filters():
+DATE_PRESETS = {
+    "All data": None,
+    "Last 1 year": 365,
+    "Last 3 years": 365 * 3,
+    "Last 5 years": 365 * 5,
+    "2018 onward": "2018",
+    "Custom range": "custom",
+}
+
+def sidebar_filters(show_sector=True, show_date=True):
+    """
+    Render whichever sidebar controls a page actually uses and return
+    (tickers, start, end, token). Pages that ignore a dimension pass the
+    matching flag as False so the control does not appear at all.
+    """
     token = get_token()
 
     if "sector" not in st.session_state:
         st.session_state["sector"] = "Big Tech"
+    if "date_preset" not in st.session_state:
+        st.session_state["date_preset"] = "All data"
     if "start_date" not in st.session_state:
-        st.session_state["start_date"] = pd.Timestamp("2018-01-01").date()
+        st.session_state["start_date"] = pd.Timestamp("2015-01-01").date()
     if "end_date" not in st.session_state:
         st.session_state["end_date"] = pd.Timestamp.today().date()
 
-    sector = st.sidebar.radio(
-        "Sector",
-        options=list(SECTOR_MAP.keys()),
-        index=list(SECTOR_MAP.keys()).index(st.session_state["sector"]),
-        key="sector_radio",
-        help="Chooses which group of tickers every chart is built from. "
-             "Your choice carries across all pages.",
-    )
-    st.session_state["sector"] = sector
-    selected = list(SECTOR_MAP[sector])
+    if show_sector:
+        sector = st.sidebar.radio(
+            "Sector",
+            options=list(SECTOR_MAP.keys()),
+            index=list(SECTOR_MAP.keys()).index(st.session_state["sector"]),
+            key="sector_radio",
+            help="Which group of tickers the charts are built from. "
+                 "Carries across pages.",
+        )
+        st.session_state["sector"] = sector
+    selected = list(SECTOR_MAP[st.session_state["sector"]])
 
-    date_range = st.sidebar.date_input(
-        "Date Range",
-        value=[st.session_state["start_date"], st.session_state["end_date"]],
-        min_value=pd.Timestamp("2015-01-01").date(),
-        max_value=pd.Timestamp.today().date(),
-        key="date_range_input",
-        help="Limits every chart to this window. A shorter range loads faster "
-             "because fewer quarterly files are read.",
-    )
-    if len(date_range) == 2:
-        st.session_state["start_date"] = date_range[0]
-        st.session_state["end_date"]   = date_range[1]
+    if show_date:
+        preset = st.sidebar.selectbox(
+            "Date range",
+            options=list(DATE_PRESETS.keys()),
+            index=list(DATE_PRESETS.keys()).index(st.session_state["date_preset"]),
+            key="date_preset_select",
+            help="Choose a preset window or set your own dates.",
+        )
+        st.session_state["date_preset"] = preset
+        rule = DATE_PRESETS[preset]
+        today = pd.Timestamp.today().normalize()
 
-    start = pd.Timestamp(st.session_state["start_date"])
-    end   = pd.Timestamp(st.session_state["end_date"])
+        if rule is None:                       # All data
+            start = pd.Timestamp("2015-01-01")
+            end   = today
+        elif rule == "2018":
+            start = pd.Timestamp("2018-01-01")
+            end   = today
+        elif rule == "custom":
+            picked = st.sidebar.date_input(
+                "Custom dates",
+                value=[st.session_state["start_date"], st.session_state["end_date"]],
+                min_value=pd.Timestamp("2015-01-01").date(),
+                max_value=today.date(),
+                key="date_range_input",
+            )
+            if len(picked) == 2:
+                st.session_state["start_date"], st.session_state["end_date"] = picked
+            start = pd.Timestamp(st.session_state["start_date"])
+            end   = pd.Timestamp(st.session_state["end_date"])
+        else:                                  # rolling window in days
+            end   = today
+            start = today - pd.Timedelta(days=int(rule))
+
+        st.session_state["start_date"] = start.date()
+        st.session_state["end_date"]   = end.date()
+    else:
+        start = pd.Timestamp("2015-01-01")
+        end   = pd.Timestamp.today().normalize()
 
     st.sidebar.markdown("---")
-    st.sidebar.caption("**Tickers in view**")
-    st.sidebar.caption(", ".join(selected) if selected else "none")
+    if show_sector:
+        st.sidebar.caption("**Tickers in view**")
+        st.sidebar.caption(", ".join(selected) if selected else "none")
 
     latest, days_old = data_freshness(token)
     if latest is not None:
         if days_old is not None and days_old > 7:
-            st.sidebar.warning(
-                f"Data last updated {latest} ({days_old} days ago)."
-            )
+            st.sidebar.warning(f"Data last updated {latest} ({days_old} days ago).")
         else:
             st.sidebar.caption(f"Data current to {latest}")
 
@@ -307,7 +347,7 @@ def sentiment_colors(values, threshold=SENTIMENT_THRESHOLD):
     return [sentiment_color(v, threshold) for v in values]
 
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def data_freshness(token=None):
     """
     How current the underlying data is. Returns (label, days_old) so the sidebar

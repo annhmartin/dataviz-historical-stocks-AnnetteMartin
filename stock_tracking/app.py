@@ -11,13 +11,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 PAGES = [
     ("pages/00_Key_Findings.py",   "Key Findings"),
-    ("pages/01_Overview.py",       "Sentiment vs Price"),
+    ("pages/04_Strategies.py",     "Strategies"),
+    ("pages/07_What_If.py",        "What If"),
     ("pages/02_Signal_Quality.py", "Signal Quality"),
     ("pages/03_Correlation.py",    "Correlation"),
-    ("pages/04_Strategies.py",     "Strategies"),
     ("pages/05_Key_Moments.py",    "Key Moments"),
     ("pages/06_Sources.py",        "Sources"),
-    ("pages/07_What_If.py",        "What If"),
+    ("pages/01_Overview.py",       "Sentiment vs Price"),
 ]
 
 missing = [rel for rel, _ in PAGES if not os.path.isfile(os.path.join(HERE, rel))]

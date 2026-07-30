@@ -106,7 +106,7 @@ for ticker in tickers_to_plot:
     avg_sent = float(sig[sig_col].mean())
     mood = "leaned positive" if avg_sent > 0.02 else ("leaned negative" if avg_sent < -0.02 else "stayed close to neutral")
     titled(fig,
-           f"{ticker} sentiment {mood} over this period",
+           f"How did sentiment toward {ticker} behave? It {mood}",
            f"{n_signal:,} days carried a sentiment reading | "
            f"average score {avg_sent:+.3f}",
            height=460)

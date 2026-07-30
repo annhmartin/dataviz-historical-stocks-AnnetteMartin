@@ -139,7 +139,7 @@ fig.update_layout(legend=dict(orientation="h", y=1.02, x=0, yanchor="bottom"))
 
 verdict = "beats" if acc > 0.5 else "trails"
 titled(fig,
-       f"{ticker} sentiment {verdict} a coin flip, at {acc*100:.1f}% accuracy",
+       f"Does {ticker} sentiment beat a coin flip? It {verdict} it, at {acc*100:.1f}%",
        f"Cool colours mark correct calls, warm colours incorrect. n = {total:,} signals",
        height=620)
 show(fig)

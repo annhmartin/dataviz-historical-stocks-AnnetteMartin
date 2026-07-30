@@ -9,7 +9,7 @@ from utils import (load_csv, sidebar_filters, OUTPUT_PREFIX, SOURCE_COLORS,
 
 st.header("Sources")
 
-selected, start, end, token = sidebar_filters()
+selected, start, end, token = sidebar_filters(show_date=False)
 apply_chart_style()
 
 source_attr = load_csv(OUTPUT_PREFIX + "/source_attribution.csv", token)
@@ -55,7 +55,7 @@ fig.update_xaxes(title="", tickangle=-45)
 
 dominant = share.mean().idxmax()
 titled(fig,
-       f"{dominant} supplies most of the coverage across these companies",
+       f"Which source supplies the most coverage? {dominant}",
        f"Each bar is one ticker's coverage split by source, ordered by total volume. "
        f"Showing {len(share)} tickers",
        height=560)
@@ -101,7 +101,7 @@ fig2.update_yaxes(title="")
 
 strongest = quality.iloc[-1]
 titled(fig2,
-       f"{strongest['source']} expresses the most strongly worded sentiment",
+       f"Which source words things most strongly? {strongest['source']}",
        "Bar length is how forcefully a source phrases things, not how often it is right",
        height=500)
 show(fig2)

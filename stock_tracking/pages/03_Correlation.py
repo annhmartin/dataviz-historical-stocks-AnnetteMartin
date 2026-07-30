@@ -82,7 +82,7 @@ else:
                      tickformat="+.3f")
     fig.update_yaxes(title="")
     titled(fig,
-           f"{top['ticker']} shows the strongest sentiment-to-price relationship here",
+           f"Which company has the most predictive chatter? {top['ticker']}",
            caption,
            height=max(430, len(plot_df) * 26 + 230))
     show(fig)
@@ -147,7 +147,7 @@ recent = float(d["roll"].tail(60).mean())
 early  = float(d["roll"].head(60).mean())
 drift  = "grown more bullish" if recent > early else "cooled"
 titled(fig2,
-       f"{ticker_t} discussion has {drift} over this period",
+       f"Has sentiment toward {ticker_t} shifted over time? It has {drift}",
        "Rolling 90-day share of active sentiment days that were positive. "
        "Shading marks stretches where negative days dominated",
        height=420)
