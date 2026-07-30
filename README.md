@@ -8,7 +8,7 @@ prices for roughly two thousand companies.
 
 The short answer is yes, but modestly, and not in the direction you would expect.
 
-🔗 **[Live dashboard](https://share.streamlit.io)** · Data Visualization · Final Individual
+ **[Live dashboard](https://dataviz-historical-stocks-annettemartin-yjxmirzubvddhwowkmbzyx.streamlit.app)** · Data Visualization · Final Individual
 Project · Summer 2026
 
 ---
