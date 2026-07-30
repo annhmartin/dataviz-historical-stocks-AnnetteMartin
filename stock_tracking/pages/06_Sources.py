@@ -70,11 +70,17 @@ quality = (sa.groupby("source")
            .reset_index().sort_values("avg_abs"))
 
 fig2 = go.Figure()
-# Split into two traces so the blue/orange distinction gets a legend
+# Both entries are always drawn so the reader can see that a category exists
+# even when no source currently falls into it
 for lean, colour, label in [(True,  POS, "Leans net positive"),
                             (False, NEG, "Leans net negative")]:
     d = quality[(quality["avg_signed"] >= 0) == lean]
     if d.empty:
+        # Placeholder trace: keeps the legend entry without drawing a bar
+        fig2.add_trace(go.Bar(
+            y=[None], x=[None], orientation="h",
+            name=f"{label} (none)", marker_color=colour, marker_line_width=0,
+            showlegend=True, hoverinfo="skip"))
         continue
     fig2.add_trace(go.Bar(
         y=d["source"], x=d["avg_abs"], orientation="h",
@@ -85,7 +91,11 @@ for lean, colour, label in [(True,  POS, "Leans net positive"),
         hovertemplate="<b>%{y}</b><br>average strength %{x:.3f}"
                       "<br>net lean %{customdata[1]:+.3f}"
                       "<br>%{customdata[0]:,} items<extra></extra>"))
-fig2.update_layout(legend=dict(orientation="h", y=-0.18, x=0))
+
+fig2.update_layout(
+    legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="left", x=0,
+                itemwidth=40, itemsizing="constant"),
+    margin=dict(b=110))
 fig2.update_xaxes(title="Average absolute sentiment score")
 fig2.update_yaxes(title="")
 
@@ -93,7 +103,7 @@ strongest = quality.iloc[-1]
 titled(fig2,
        f"{strongest['source']} expresses the most strongly worded sentiment",
        "Bar length is how forcefully a source phrases things, not how often it is right",
-       height=460)
+       height=500)
 show(fig2)
 
 st.info(

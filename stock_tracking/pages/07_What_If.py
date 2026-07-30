@@ -98,20 +98,28 @@ for label, d in results.items():
                        font=dict(size=12, color=d["colour"]))
 
 fig.add_hline(y=amount, line_color=MUTED, line_width=1.5, line_dash="dot")
+fig.add_trace(go.Scatter(
+    x=[None], y=[None], mode="lines",
+    line=dict(color=MUTED, width=2, dash="dot"),
+    name=f"Starting amount (${amount:,.0f})"))
 fig.add_annotation(x=curves.index[0], y=amount, text=f"started with ${amount:,.0f} ",
                    showarrow=False, xanchor="left", yshift=-16,
                    font=dict(size=12, color=MUTED))
 
 fig.update_yaxes(title="Portfolio value", tickprefix="$")
 fig.update_xaxes(title="")
-fig.update_layout(legend=dict(orientation="h", y=1.02, x=0, yanchor="bottom"),
-                  margin=dict(r=140), hovermode="x unified")
+fig.update_layout(
+    showlegend=True,
+    legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0,
+                itemwidth=40, itemsizing="constant"),
+    margin=dict(r=150, t=140),
+    hovermode="x unified")
 
 best = max(results, key=lambda k: results[k]["final"])
 titled(fig,
        f"${amount:,.0f} in {best} would have become ${results[best]['final']:,.0f}",
        f"From {start:%B %Y} to {end:%B %Y}, including transaction costs",
-       height=540)
+       height=580)
 show(fig)
 
 st.markdown("---")

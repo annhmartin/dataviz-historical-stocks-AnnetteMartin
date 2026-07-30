@@ -122,7 +122,32 @@ fig.update_yaxes(title="% change from window start", tickformat="+.0f", row=1, c
 fig.update_yaxes(title="Sentiment score", row=2, col=1)
 fig.update_xaxes(tickformat="%d %b", row=1, col=1)
 fig.update_xaxes(tickformat="%d %b", title="", row=2, col=1)
-fig.update_layout(showlegend=False, bargap=0.15)
+# Invisible proxy traces so the marker lines appear in a real legend.
+# itemwidth widens the swatch so a thin vertical rule is actually visible.
+fig.add_trace(go.Scatter(
+    x=[None], y=[None], mode="lines",
+    line=dict(color=GOLD, width=4),
+    name="Day of the price move"), row=1, col=1)
+fig.add_trace(go.Scatter(
+    x=[None], y=[None], mode="lines",
+    line=dict(color=HIGHLIGHT, width=3, dash="dash"),
+    name=f"Sentiment fired {int(move['days_before'])}d earlier"), row=1, col=1)
+fig.add_trace(go.Scatter(
+    x=[None], y=[None], mode="lines", line=dict(color=POS, width=10),
+    name="Positive sentiment"), row=2, col=1)
+fig.add_trace(go.Scatter(
+    x=[None], y=[None], mode="lines", line=dict(color=NEG, width=10),
+    name="Negative sentiment"), row=2, col=1)
+fig.add_trace(go.Scatter(
+    x=[None], y=[None], mode="lines", line=dict(color=NEU, width=10),
+    name="Neutral"), row=2, col=1)
+
+fig.update_layout(
+    showlegend=True,
+    legend=dict(orientation="h", yanchor="top", y=-0.16, xanchor="left", x=0,
+                itemwidth=60, itemsizing="constant", tracegroupgap=8),
+    margin=dict(b=130),
+    bargap=0.15)
 
 days_before = int(move["days_before"])
 titled(fig,
@@ -130,13 +155,7 @@ titled(fig,
        f"before {ticker_km} jumped {move['return_pct']:+.1f}%",
        f"{move['move_date']:%d %B %Y} · signal strength {move['sentiment']:+.3f} · "
        f"sources: {move.get('sources_active', 'unknown')}",
-       height=680)
+       height=760)
 show(fig)
 
-st.markdown(
-    f"<span style='color:{POS}'>▌</span> positive sentiment &nbsp;&nbsp;"
-    f"<span style='color:{NEG}'>▌</span> negative sentiment &nbsp;&nbsp;"
-    f"<span style='color:{NEU}'>▌</span> neutral &nbsp;&nbsp;&nbsp;"
-    f"<span style='color:{GOLD}'>▬</span> the price move &nbsp;&nbsp;"
-    f"<span style='color:{HIGHLIGHT}'>▬</span> when sentiment fired",
-    unsafe_allow_html=True)
+

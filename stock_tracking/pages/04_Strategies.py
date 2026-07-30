@@ -101,17 +101,23 @@ if "S&P_500_SPY" in curves.columns and "Sector_Rotation" in curves.columns:
     if not margin.empty:
         fig.add_trace(go.Scatter(
             x=margin.index, y=margin.values, mode="lines",
-            line=dict(color=ACCENT, width=2), showlegend=False,
+            line=dict(color=ACCENT, width=2),
+            name="Rotation minus S&P 500", legendgroup="margin",
             hovertemplate="%{x|%b %Y}<br>margin %{y:+.1%}<extra></extra>"), row=2, col=1)
         fig.add_trace(go.Scatter(
             x=margin.index, y=np.where(margin.values < 0, margin.values, 0),
             fill="tozeroy", mode="none", fillcolor="rgba(213,94,0,0.28)",
-            showlegend=False, hoverinfo="skip"), row=2, col=1)
+            name="Trailing the index", legendgroup="margin",
+            hoverinfo="skip"), row=2, col=1)
         fig.add_hline(y=0, line_color=MUTED, line_width=1.5, row=2, col=1)
 
 fig.update_yaxes(title="Portfolio value", tickprefix="$", row=1, col=1)
 fig.update_yaxes(title="Margin", tickformat="+.0%", row=2, col=1)
-fig.update_layout(showlegend=False, margin=dict(r=170), hovermode="x unified")
+fig.update_layout(
+    showlegend=True,
+    legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="left", x=0),
+    margin=dict(r=170, t=140),
+    hovermode="x unified")
 
 finals = {label: float(curves[col].dropna().iloc[-1]) for col, label, *_ in SERIES}
 best = max(finals, key=finals.get)
@@ -156,10 +162,13 @@ if not monthly.empty:
             hovertemplate="%{x|%b %Y}<br>every strategy lost money<extra></extra>"))
     figm.update_yaxes(showticklabels=False, showgrid=False, title="")
     figm.update_xaxes(title="")
-    figm.update_layout(bargap=0.05, barmode="stack",
-                       legend=dict(orientation="h", y=-0.25, x=0))
+    figm.update_layout(
+        bargap=0.05, barmode="stack",
+        legend=dict(orientation="h", yanchor="top", y=-0.45,
+                    xanchor="left", x=0),
+        margin=dict(b=120))
     titled(figm, "Which strategy was ahead, month by month",
-           "Grey marks months where every strategy lost money", height=230)
+           "Grey marks months where every strategy lost money", height=320)
     show(figm)
 
 if not df_trades.empty and "strategy" in df_trades.columns:
