@@ -10,6 +10,7 @@ st.set_page_config(
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 PAGES = [
+    ("pages/00_Key_Findings.py",   "Key Findings"),
     ("pages/01_Overview.py",       "Overview"),
     ("pages/02_Signal_Quality.py", "Signal Quality"),
     ("pages/03_Correlation.py",    "Correlation"),
